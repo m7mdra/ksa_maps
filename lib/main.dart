@@ -1,10 +1,11 @@
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:ksa_maps/360_button.dart';
 import 'package:ksa_maps/map_zoom_controls.dart';
 import 'package:location/location.dart';
 import 'package:maplibre_gl/mapbox_gl.dart';
-import 'dart:math';
+
 import 'location_button.dart';
 
 void main() {
@@ -72,6 +73,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+//        maxBounds: [[25.193437, 14.298024], [67.380937, 33.625229]],
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -98,14 +100,20 @@ class _HomePageState extends State<HomePage> {
               // logoViewMargins: const Point(-1000, -1000),
               myLocationTrackingMode: MyLocationTrackingMode.None,
               myLocationEnabled: false,
-              minMaxZoomPreference: const MinMaxZoomPreference(4, 15),
+              onStyleLoadedCallback: () async {
+                await _mapController?.setMapLanguage("name_ar");
+              },
+              minMaxZoomPreference: const MinMaxZoomPreference(4, 19),
               myLocationRenderMode: MyLocationRenderMode.NORMAL,
               zoomGesturesEnabled: true,
+              // cameraTargetBounds: CameraTargetBounds(LatLngBounds(
+              //     southwest: LatLng(25.193437, 14.298024),
+              //     northeast: LatLng(67.380937, 33.625229))),
               onMapClick: (point, coordinates) {
                 print(coordinates);
               },
               styleString:
-                  "https://api.maptiler.com/maps/streets/style.json?key=M5g5zZAp9tzdwq36fzcm",
+                  "https://ksamaps.com/api/style?key=15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482",
               compassEnabled: true,
               initialCameraPosition:
                   const CameraPosition(target: LatLng(24.774265, 46.738586)),
@@ -128,7 +136,7 @@ class _HomePageState extends State<HomePage> {
               }, zoomOutCallback: () {
                 _mapController?.animateCamera(CameraUpdate.zoomOut());
               }),
-            )
+            ),
           ],
         ),
       ),
