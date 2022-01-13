@@ -1,9 +1,10 @@
+
 import 'package:flutter/material.dart';
 import 'package:ksa_maps/360_button.dart';
 import 'package:ksa_maps/map_zoom_controls.dart';
 import 'package:location/location.dart';
 import 'package:maplibre_gl/mapbox_gl.dart';
-
+import 'dart:math';
 import 'location_button.dart';
 
 void main() {
@@ -93,6 +94,8 @@ class _HomePageState extends State<HomePage> {
         child: Stack(
           children: [
             MaplibreMap(
+              attributionButtonMargins: const Point(-1000, -1000),
+              // logoViewMargins: const Point(-1000, -1000),
               myLocationTrackingMode: MyLocationTrackingMode.None,
               myLocationEnabled: false,
               minMaxZoomPreference: const MinMaxZoomPreference(4, 15),
