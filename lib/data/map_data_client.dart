@@ -1,8 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:ksa_maps/data/model/query_result.dart';
 
+import 'error_handler.dart';
+
 class MapDataClient {
   final Dio _httpClient;
+  CancelToken? _cancelToken;
 
   MapDataClient(this._httpClient);
 
@@ -10,18 +13,36 @@ class MapDataClient {
 
   Future<QueryResultResponse> geoSearch(String query, String lang, int page,
       List<double> bounds, List<double> center) async {
-    var response = await _httpClient.get("geosearch", queryParameters: {
-      "query": query,
-      "page": page,
-      "lang": "en",
-      "bounds": bounds.join(),
-      "center": center.join(),
-      "ser": 1,
-      "key":
-          "15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482"
-    });
-    print(response.data);
-    return QueryResultResponse.fromJson(response.data);
+    try {
+      if (_cancelToken != null) {
+        print("cancel cancelToken ${_cancelToken}");
+        _cancelToken?.cancel();
+      }
+      _cancelToken = CancelToken();
+      print("create cancelToken ${_cancelToken}");
+      var response = await _httpClient.get(
+        "geosearch",
+        queryParameters: {
+          "query": query,
+          "page": page,
+          "lang": "en",
+          "bounds": bounds.join(),
+          "center": center.join(),
+          "ser": 1,
+          "key":
+              "15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482"
+        },
+      );
+      if (response.data is Map) {
+        return QueryResultResponse.fromJson([]);
+      } else {
+        return QueryResultResponse.fromJson(response.data);
+      }
+    } on DioError catch (err) {
+      throw handleDioError(err);
+    } catch (error) {
+      rethrow;
+    }
   }
 }
 

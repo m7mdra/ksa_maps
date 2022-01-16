@@ -1,6 +1,9 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:ksa_maps/data/data.dart';
 import 'package:ksa_maps/ui/search/search_page.dart';
 import 'package:ksa_maps/ui/widget/360_button.dart';
 import 'package:ksa_maps/ui/widget/location_button.dart';
@@ -24,6 +27,32 @@ class _HomePageState extends State<HomePage> {
 
   void _onMapReady(MaplibreMapController controller) async {
     _mapController = controller;
+    _mapController?.onSymbolTapped.add(onSymbolTapped);
+  }
+
+  void onSymbolTapped(Symbol symbol) {
+    showModalBottomSheet(
+        context: context,
+        builder: (context) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(children: [
+              ListTile(
+                title: Text(
+                    "Direction from:\n${symbol.data?['name'] ?? "Here"}"),
+                subtitle: Text(symbol.data?["fullAddress"]),
+
+                onTap: () {},
+              ),
+              ListTile(
+                title: Text(
+                    "Direction to:\n${symbol.data?['name'] ?? "Here"}"),
+                subtitle: Text(symbol.data?["fullAddress"]),
+                onTap: () {},
+              ),
+            ], mainAxisSize: MainAxisSize.min),
+          );
+        });
   }
 
   void _resetAll() {
@@ -88,8 +117,16 @@ class _HomePageState extends State<HomePage> {
               // logoViewMargins: const Point(-1000, -1000),
               myLocationTrackingMode: MyLocationTrackingMode.None,
               myLocationEnabled: false,
-
+              annotationOrder: const [
+                AnnotationType.symbol,
+                AnnotationType.line,
+                AnnotationType.circle,
+                AnnotationType.fill,
+              ],
               onStyleLoadedCallback: () async {
+                await _mapController?.addImage(
+                    "marker", await loadMarkerImage());
+
                 await _mapController?.setMapLanguage("name_ar");
               },
 
@@ -100,7 +137,7 @@ class _HomePageState extends State<HomePage> {
               // cameraTargetBounds: CameraTargetBounds(LatLngBounds(
               //     southwest: LatLng(25.193437, 14.298024),
               //     northeast: LatLng(67.380937, 33.625229))),
-              onMapClick: (point, coordinates) {},
+              onMapClick: (point, coordinates) async {},
               styleString:
                   "https://ksamaps.com/api/style?key=15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482",
               compassEnabled: true,
@@ -110,15 +147,19 @@ class _HomePageState extends State<HomePage> {
             ),
             if (_currentSelection == 0)
               ClickableSearchWidget(onTap: () async {
-                var target = _mapController?.cameraPosition?.target ??
-                    const LatLng(24.774265, 46.738586);
+                const LatLng(24.774265, 46.738586);
                 var bounds = await _mapController?.getVisibleRegion();
 
-                if (target != null && bounds != null) {
-                  var result = await Navigator.push(context,
+                if (bounds != null) {
+                  LatLng center = LatLng(
+                    (bounds.northeast.latitude + bounds.southwest.latitude) / 2,
+                    (bounds.northeast.longitude + bounds.southwest.longitude) /
+                        2,
+                  );
+                  var result = await Navigator.push<QueryResult>(context,
                       MaterialPageRoute(builder: (context) {
                     return SearchPage(
-                      center: [target.latitude, target.longitude],
+                      center: [center.latitude, center.longitude],
                       bounds: [
                         bounds.northeast.latitude,
                         bounds.northeast.longitude,
@@ -127,6 +168,19 @@ class _HomePageState extends State<HomePage> {
                       ],
                     );
                   }));
+                  if (result != null) {
+                    Future.wait([]);
+                    await _mapController?.addImage(
+                        "marker", await loadMarkerImage());
+                    await _mapController?.addSymbol(
+                        SymbolOptions(
+                            geometry: result.coordinates(),
+                            iconImage: "marker"),
+                        result.toJson());
+                    await _mapController?.animateCamera(
+                        CameraUpdate.newCameraPosition(CameraPosition(
+                            target: result.coordinates(), zoom: 15)));
+                  }
                 }
               })
             else if (_currentSelection == 1)
@@ -165,6 +219,11 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  Future<Uint8List> loadMarkerImage() async {
+    var byteData = await rootBundle.load("assets/image/marker.png");
+    return byteData.buffer.asUint8List();
   }
 
   void _onSelectionChanged(page) {

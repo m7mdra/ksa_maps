@@ -47,4 +47,25 @@ class QueryResult {
         pages: json["pages"] ?? "",
         type: json["type"] ?? "",
       );
+
+  Map<String, dynamic> toJson() {
+    return {
+      "lat": lat,
+      "lng": lng,
+      "name": name,
+      "fullAddress": fullAddress,
+      "streetName": streetName,
+      "district": district,
+      "province": province,
+      "city": city,
+      "postalCode": postalCode,
+      "pages": pages,
+      "type": type
+    };
+  }
+
+  @override
+  String toString() {
+    return 'QueryResult{lat: $lat, lng: $lng, name: $name, fullAddress: $fullAddress}';
+  }
 }

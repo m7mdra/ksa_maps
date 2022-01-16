@@ -1,4 +1,5 @@
 import 'package:bloc/bloc.dart';
+import 'package:ksa_maps/data/error_handler.dart';
 import 'package:ksa_maps/data/map_data_client.dart';
 import 'package:ksa_maps/data/model/query_result.dart';
 import 'package:meta/meta.dart';
@@ -31,11 +32,16 @@ class GeoSearchBloc extends Bloc<GeoSearchEvent, GeoSearchState> {
           emit(GeoSearchResult(list, false, _pageNumber));
         }
       } catch (error) {
-        emit(GeoSearchError());
+        print(error);
+        if (error is CancelException) {
+          emit(GeoSearchInitial());
+        } else {
+          emit(GeoSearchError());
+        }
       }
     }, transformer: debounce(_duration));
     on<LoadNextSearchPage>((event, emit) async {
-      if(event.query.isEmpty) {
+      if (event.query.isEmpty) {
         return;
       }
 
@@ -51,7 +57,12 @@ class GeoSearchBloc extends Bloc<GeoSearchEvent, GeoSearchState> {
           emit(GeoSearchResult(list, false, _pageNumber));
         }
       } catch (error) {
-        emit(GeoSearchError());
+        print(error);
+        if (error is CancelException) {
+          emit(GeoSearchInitial());
+        } else {
+          emit(GeoSearchError());
+        }
       }
     });
   }

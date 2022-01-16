@@ -81,11 +81,13 @@ class _SearchPageState extends State<SearchPage> {
                       child: TextField(
                         controller: textEditingController,
                         onChanged: (text) {
+                          if (text.length <= 3) return;
+                          _pageController.refresh();
                           setState(() {
                             searchBarEmpty = text.isEmpty;
                           });
+
                           if (text.isNotEmpty) {
-                            _pageController.refresh();
                             _bloc.add(SubmitSearchKey(
                                 query: text,
                                 lang: Localizations.localeOf(context)
@@ -103,11 +105,12 @@ class _SearchPageState extends State<SearchPage> {
                     IconButton(
                       icon: const Icon(Icons.clear),
                       onPressed: () {
-                        _pageController.refresh();
+
                         setState(() {
                           searchBarEmpty = true;
                         });
                         textEditingController.clear();
+                        _pageController.refresh();
                       },
                     )
                   ])),
@@ -119,6 +122,9 @@ class _SearchPageState extends State<SearchPage> {
                           builderDelegate: PagedChildBuilderDelegate(
                               itemBuilder: (context, item, index) {
                             return ListTile(
+                              onTap: () {
+                                Navigator.pop(context, item);
+                              },
                               title: Text(item.name ?? ""),
                               subtitle: Text(item.fullAddress ?? ""),
                               leading: const Icon(Icons.location_on_outlined),
