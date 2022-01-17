@@ -9,6 +9,7 @@ class GeoSearchLoading extends GeoSearchState {}
 
 class GeoSearchError extends GeoSearchState {}
 class GeoSearchEmpty extends GeoSearchState {}
+class GeoSearchClearState extends GeoSearchState {}
 
 class GeoSearchResult extends GeoSearchState {
   final List<QueryResult> list;

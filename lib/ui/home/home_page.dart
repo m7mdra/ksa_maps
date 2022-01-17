@@ -130,7 +130,7 @@ class _HomePageState extends State<HomePage> {
                 await _mapController?.setMapLanguage("name_ar");
               },
 
-              minMaxZoomPreference: const MinMaxZoomPreference(5, 19),
+              minMaxZoomPreference: const MinMaxZoomPreference(4.5, 19),
               myLocationRenderMode: MyLocationRenderMode.NORMAL,
               zoomGesturesEnabled: true,
 
@@ -142,12 +142,11 @@ class _HomePageState extends State<HomePage> {
                   "https://ksamaps.com/api/style?key=15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482",
               compassEnabled: true,
               initialCameraPosition:
-                  const CameraPosition(target: LatLng(24.774265, 46.738586)),
+                  const CameraPosition(target: LatLng(24.774265, 46.738586),zoom: 5),
               onMapCreated: _onMapReady,
             ),
             if (_currentSelection == 0)
               ClickableSearchWidget(onTap: () async {
-                const LatLng(24.774265, 46.738586);
                 var bounds = await _mapController?.getVisibleRegion();
 
                 if (bounds != null) {

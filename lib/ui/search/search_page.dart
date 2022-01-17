@@ -23,12 +23,13 @@ class _SearchPageState extends State<SearchPage> {
   final _pageController = PagingController<int, QueryResult>(firstPageKey: 1);
   final textEditingController = TextEditingController();
   bool searchBarEmpty = true;
+  String _searchTerm = "";
 
   @override
   void initState() {
     super.initState();
     var dio = Dio(BaseOptions(baseUrl: "https://ksamaps.com/api/"));
-    dio.interceptors.add(PrettyDioLogger());
+    dio.interceptors.add(PrettyDioLogger(responseBody: false));
     _bloc = GeoSearchBloc(MapDataClient(dio));
 
     _pageController.addPageRequestListener((pageKey) {
@@ -37,6 +38,22 @@ class _SearchPageState extends State<SearchPage> {
           lang: Localizations.localeOf(context).languageCode,
           bounds: widget.bounds,
           center: widget.center));
+    });
+    _bloc.stream.listen((state) {
+      if (state is GeoSearchError) {
+        _pageController.error = "Failed to load data, try again";
+      }
+      if(state is GeoSearchClearState){
+        print("clearing search result");
+        _pageController.refresh();
+      }
+      if (state is GeoSearchResult) {
+        if (state.lastPage) {
+          _pageController.appendLastPage(state.list);
+        } else {
+          _pageController.appendPage(state.list, state.pageNumber);
+        }
+      }
     });
   }
 
@@ -51,88 +68,69 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: BlocListener(
-          listener: (context, state) {
-            if (state is GeoSearchError) {
-              _pageController.error = "Failed to load data, try again";
-            }
-            if (state is GeoSearchResult) {
-              if (state.lastPage) {
-                _pageController.appendLastPage(state.list);
-              } else {
-                _pageController.appendPage(state.list, state.pageNumber);
-              }
-            }
-          },
-          bloc: _bloc,
-          child: Column(
-            children: [
-              Card(
-                  margin: const EdgeInsets.all(8),
-                  child: Row(children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: searchBarEmpty
-                          ? const BackButton(color: Colors.grey)
-                          : const Icon(Icons.search, color: Colors.grey),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextField(
-                        controller: textEditingController,
-                        onChanged: (text) {
-                          if (text.length <= 3) return;
-                          _pageController.refresh();
-                          setState(() {
-                            searchBarEmpty = text.isEmpty;
-                          });
-
-                          if (text.isNotEmpty) {
-                            _bloc.add(SubmitSearchKey(
-                                query: text,
-                                lang: Localizations.localeOf(context)
-                                    .languageCode,
-                                bounds: widget.bounds,
-                                center: widget.center));
-                          }
-                        },
-                        decoration: const InputDecoration(
-                            border:
-                                OutlineInputBorder(borderSide: BorderSide.none),
-                            contentPadding: EdgeInsets.all(12)),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
+        child: Column(
+          children: [
+            Card(
+                margin: const EdgeInsets.all(8),
+                child: Row(children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: searchBarEmpty
+                        ? const BackButton(color: Colors.grey)
+                        : const Icon(Icons.search, color: Colors.grey),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: textEditingController,
+                      onChanged: (text) {
+                        if (text.length <= 3) return;
 
                         setState(() {
-                          searchBarEmpty = true;
+                          searchBarEmpty = text.isEmpty;
                         });
-                        textEditingController.clear();
-                        _pageController.refresh();
+
+                        _bloc.add(SubmitSearchKey(
+                            query: text,
+                            lang: Localizations.localeOf(context).languageCode,
+                            bounds: widget.bounds,
+                            center: widget.center));
                       },
-                    )
-                  ])),
-              Expanded(
-                  child: searchBarEmpty
-                      ? Container()
-                      : PagedListView<int, QueryResult>(
-                          pagingController: _pageController,
-                          builderDelegate: PagedChildBuilderDelegate(
-                              itemBuilder: (context, item, index) {
-                            return ListTile(
-                              onTap: () {
-                                Navigator.pop(context, item);
-                              },
-                              title: Text(item.name ?? ""),
-                              subtitle: Text(item.fullAddress ?? ""),
-                              leading: const Icon(Icons.location_on_outlined),
-                            );
-                          }),
-                        ))
-            ],
-          ),
+                      decoration: const InputDecoration(
+                          border:
+                              OutlineInputBorder(borderSide: BorderSide.none),
+                          contentPadding: EdgeInsets.all(12)),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      setState(() {
+                        searchBarEmpty = true;
+                      });
+                      textEditingController.clear();
+                      _pageController.refresh();
+                    },
+                  )
+                ])),
+            Expanded(
+                child: searchBarEmpty
+                    ? Container()
+                    : PagedListView<int, QueryResult>(
+                        pagingController: _pageController,
+                        builderDelegate: PagedChildBuilderDelegate(
+                            itemBuilder: (context, item, index) {
+                          return ListTile(
+                            onTap: () {
+                              Navigator.pop(context, item);
+                            },
+                            title: Text(item.name ?? ""),
+                            subtitle: Text(item.fullAddress ?? ""),
+                            leading: const Icon(Icons.location_on_outlined),
+                          );
+                        }),
+                      ))
+          ],
         ),
       ),
     );

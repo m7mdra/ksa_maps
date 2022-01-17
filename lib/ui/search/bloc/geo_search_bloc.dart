@@ -21,10 +21,11 @@ class GeoSearchBloc extends Bloc<GeoSearchEvent, GeoSearchState> {
         return;
       }
       try {
+        emit(GeoSearchClearState());
         emit(GeoSearchLoading());
         _pageNumber = 1;
         var response = await _client.geoSearch(
-            event.query, event.lang, _pageNumber, event.bounds, event.center);
+            event.query, event.lang, event.bounds, event.center);
         var list = response.list;
         if (list.isEmpty) {
           emit(GeoSearchEmpty());
@@ -47,11 +48,11 @@ class GeoSearchBloc extends Bloc<GeoSearchEvent, GeoSearchState> {
 
       try {
         emit(GeoSearchLoading());
-        var response = await _client.geoSearch(
+        var response = await _client.geoSearchNextPage(
             event.query, event.lang, _pageNumber, event.bounds, event.center);
         var list = response.list;
         if (list.isEmpty) {
-          emit(GeoSearchResult(list, true, _pageNumber));
+          emit(GeoSearchResult([], true, _pageNumber));
         } else {
           _pageNumber += 1;
           emit(GeoSearchResult(list, false, _pageNumber));
@@ -71,10 +72,4 @@ class GeoSearchBloc extends Bloc<GeoSearchEvent, GeoSearchState> {
     return (events, mapper) => events.debounce(duration).switchMap(mapper);
   }
 
-  @override
-  void onTransition(Transition<GeoSearchEvent, GeoSearchState> transition) {
-    // TODO: implement onTransition
-    super.onTransition(transition);
-    print(transition);
-  }
 }
