@@ -15,6 +15,7 @@ import 'package:maplibre_gl/mapbox_gl.dart';
 
 const kAccessKey =
     "15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482";
+const kPoiLayers = ['pois1', 'pois2', 'pois3', 'pois4', 'pois5'];
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -144,8 +145,9 @@ class _HomePageState extends State<HomePage> {
                 await _mapController?.addSource(
                     "traffic",
                     const VectorSourceProperties(
-                      tiles:
-                          ["https://ksamaps.com/api/traffic/{z}/{x}/{y}.pbf?key=$kAccessKey"],
+                      tiles: [
+                        "https://ksamaps.com/api/traffic/{z}/{x}/{y}.pbf?key=$kAccessKey"
+                      ],
                       minzoom: 9,
                       maxzoom: 19,
                       attribution: "Traffic: Data Source © TomTom",
@@ -159,7 +161,20 @@ class _HomePageState extends State<HomePage> {
               // cameraTargetBounds: CameraTargetBounds(LatLngBounds(
               //     southwest: LatLng(25.193437, 14.298024),
               //     northeast: LatLng(67.380937, 33.625229))),
-              onMapClick: (point, coordinates) async {},
+              onMapClick: (point, coordinates) async {
+/*
+                try {
+                  var features = await _mapController?.queryRenderedFeatures(
+                      Point(point.x - 10 / 2, point.y - 20 / 2),
+                      kPoiLayers, []);
+                  if (features == null || features.isEmpty) return;
+
+                  print(features);
+                } catch (error) {
+                  print(error);
+                }
+*/
+              },
               styleString: "https://ksamaps.com/api/style?key=$kAccessKey",
               compassEnabled: true,
               initialCameraPosition: const CameraPosition(
@@ -273,7 +288,8 @@ class _HomePageState extends State<HomePage> {
                 },
                 onSatelliteSelected: () async {
                   await _mapController?.addLayer(
-                      "satellite", "satellite", const RasterLayerProperties());
+                      "satellite", "satellite", const RasterLayerProperties(),
+                      belowLayerId: "land");
                   setState(() {
                     _satelliteAdded = true;
                   });
@@ -302,23 +318,27 @@ class _HomePageState extends State<HomePage> {
                                 ["linear"],
                                 [
                                   "number",
-                                  [
-                                    "get",
-                                    "traffic_level"
-                                  ]
+                                  ["get", "traffic_level"]
                                 ],
-                                0, "gray",
-                                0.1, "orangered",
-                                0.3, "tomato",
-                                0.5, "goldenrod",
-                                0.7, "yellow",
-                                1, "limegreen"
+                                0,
+                                "gray",
+                                0.1,
+                                "orangered",
+                                0.3,
+                                "tomato",
+                                0.5,
+                                "goldenrod",
+                                0.7,
+                                "yellow",
+                                1,
+                                "limegreen"
                               ],
                               lineWidth: 1,
                               lineCap: "round",
                               lineJoin: "round",
                             ),
-                            sourceLayer: "Traffic flow")
+                            sourceLayer: "Traffic flow",
+                            belowLayerId: "stnw4_label")
                         .then((_) {
                       print("add traffic layer");
                       setState(() {
@@ -367,6 +387,7 @@ class MapStyleFeatures extends StatelessWidget {
           ListTile(
             onTap: onNormalSelected,
             selected: !satelliteAdded,
+            subtitle: Text('Map Data and APIs - THTC Maps'),
             leading: ClipRRect(
               child: Image.asset(
                 "assets/image/map2.png",
@@ -380,6 +401,8 @@ class MapStyleFeatures extends StatelessWidget {
           ListTile(
             onTap: onSatelliteSelected,
             selected: satelliteAdded,
+            subtitle: const Text(
+                'Imagery: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA FSA, USGS, Aerogrid, IGN, IGP, and the GIS User Community'),
             leading: ClipRRect(
               child: Image.asset(
                 "assets/image/map1.png",
@@ -399,6 +422,7 @@ class MapStyleFeatures extends StatelessWidget {
           ListTile(
             onTap: onTrafficToggle,
             selected: isTrafficEnabled,
+            subtitle: const Text("Traffic: Data Source © TomTom"),
             leading: ClipRRect(
               child: Image.asset(
                 "assets/image/traffic.png",
