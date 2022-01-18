@@ -6,11 +6,15 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:ksa_maps/data/data.dart';
 import 'package:ksa_maps/ui/search/search_page.dart';
 import 'package:ksa_maps/ui/widget/360_button.dart';
+import 'package:ksa_maps/ui/widget/layers_button.dart';
 import 'package:ksa_maps/ui/widget/location_button.dart';
 import 'package:ksa_maps/ui/widget/map_zoom_controls.dart';
 import 'package:ksa_maps/ui/widget/search_widget.dart';
 import 'package:location/location.dart';
 import 'package:maplibre_gl/mapbox_gl.dart';
+
+const kAccessKey =
+    "15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482";
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -24,6 +28,8 @@ class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _key = GlobalKey();
   var _currentSelection = 0;
   var cameraTilted = false;
+  var _satelliteAdded = false;
+  var _trafficAdded = false;
 
   void _onMapReady(MaplibreMapController controller) async {
     _mapController = controller;
@@ -38,15 +44,13 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.all(24),
             child: Column(children: [
               ListTile(
-                title: Text(
-                    "Direction from:\n${symbol.data?['name'] ?? "Here"}"),
+                title:
+                    Text("Direction from:\n${symbol.data?['name'] ?? "Here"}"),
                 subtitle: Text(symbol.data?["fullAddress"]),
-
                 onTap: () {},
               ),
               ListTile(
-                title: Text(
-                    "Direction to:\n${symbol.data?['name'] ?? "Here"}"),
+                title: Text("Direction to:\n${symbol.data?['name'] ?? "Here"}"),
                 subtitle: Text(symbol.data?["fullAddress"]),
                 onTap: () {},
               ),
@@ -90,7 +94,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-//        maxBounds: [[25.193437, 14.298024], [67.380937, 33.625229]],
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,6 +131,25 @@ class _HomePageState extends State<HomePage> {
                     "marker", await loadMarkerImage());
 
                 await _mapController?.setMapLanguage("name_ar");
+                await _mapController?.addSource(
+                  "satellite",
+                  const RasterSourceProperties(
+                      tiles: [
+                        'https://ksamaps.com/api/satellite/{z}/{x}/{y}.png?key=$kAccessKey'
+                      ],
+                      tileSize: 256,
+                      attribution:
+                          'Map tiles by <a target="_top" rel="noopener" href="http://stamen.com">Stamen Design</a>, under <a target="_top" rel="noopener" href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a target="_top" rel="noopener" href="http://openstreetmap.org">OpenStreetMap</a>, under <a target="_top" rel="noopener" href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>'),
+                );
+                await _mapController?.addSource(
+                    "traffic",
+                    const VectorSourceProperties(
+                      tiles:
+                          ["https://ksamaps.com/api/traffic/{z}/{x}/{y}.pbf?key=$kAccessKey"],
+                      minzoom: 9,
+                      maxzoom: 19,
+                      attribution: "Traffic: Data Source © TomTom",
+                    ));
               },
 
               minMaxZoomPreference: const MinMaxZoomPreference(4.5, 19),
@@ -138,11 +160,10 @@ class _HomePageState extends State<HomePage> {
               //     southwest: LatLng(25.193437, 14.298024),
               //     northeast: LatLng(67.380937, 33.625229))),
               onMapClick: (point, coordinates) async {},
-              styleString:
-                  "https://ksamaps.com/api/style?key=15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482",
+              styleString: "https://ksamaps.com/api/style?key=$kAccessKey",
               compassEnabled: true,
-              initialCameraPosition:
-                  const CameraPosition(target: LatLng(24.774265, 46.738586),zoom: 5),
+              initialCameraPosition: const CameraPosition(
+                  target: LatLng(24.774265, 46.738586), zoom: 5),
               onMapCreated: _onMapReady,
             ),
             if (_currentSelection == 0)
@@ -168,7 +189,6 @@ class _HomePageState extends State<HomePage> {
                     );
                   }));
                   if (result != null) {
-                    Future.wait([]);
                     await _mapController?.addImage(
                         "marker", await loadMarkerImage());
                     await _mapController?.addSymbol(
@@ -184,6 +204,11 @@ class _HomePageState extends State<HomePage> {
               })
             else if (_currentSelection == 1)
               const Icon(Icons.alt_route),
+            Align(
+                child: LayersButton(onTap: () async {
+                  _showFeatureAndLayerBottomSheet();
+                }),
+                alignment: const Alignment(1, -0.5)),
             Align(
                 child: Button360View(
                   onTap: () {
@@ -229,5 +254,164 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _currentSelection = page;
     });
+  }
+
+  void _showFeatureAndLayerBottomSheet() {
+    showModalBottomSheet(
+        context: _key.currentContext!,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return MapStyleFeatures(
+                satelliteAdded: _satelliteAdded,
+                isTrafficEnabled: _trafficAdded,
+                onNormalSelected: () async {
+                  await _mapController?.removeLayer("satellite");
+                  setState(() {
+                    _satelliteAdded = false;
+                  });
+                },
+                onSatelliteSelected: () async {
+                  await _mapController?.addLayer(
+                      "satellite", "satellite", const RasterLayerProperties());
+                  setState(() {
+                    _satelliteAdded = true;
+                  });
+                },
+                onTrafficToggle: () async {
+                  if (_trafficAdded) {
+                    print("removing traffic ");
+
+                    _mapController?.removeLayer("traffic").then((_) {
+                      print("remove traffic layer");
+                      setState(() {
+                        _trafficAdded = false;
+                      });
+                    }).catchError((error) {
+                      print("remove traffic layer error");
+                    });
+                  } else {
+                    print("adding traffic ");
+                    _mapController
+                        ?.addLayer(
+                            "traffic",
+                            "traffic",
+                            const LineLayerProperties(
+                              lineColor: [
+                                "interpolate",
+                                ["linear"],
+                                [
+                                  "number",
+                                  [
+                                    "get",
+                                    "traffic_level"
+                                  ]
+                                ],
+                                0, "gray",
+                                0.1, "orangered",
+                                0.3, "tomato",
+                                0.5, "goldenrod",
+                                0.7, "yellow",
+                                1, "limegreen"
+                              ],
+                              lineWidth: 1,
+                              lineCap: "round",
+                              lineJoin: "round",
+                            ),
+                            sourceLayer: "Traffic flow")
+                        .then((_) {
+                      print("add traffic layer");
+                      setState(() {
+                        _trafficAdded = true;
+                      });
+                    }).catchError((error) {
+                      print("add traffic layer error");
+                    });
+                  }
+                },
+              );
+            },
+          );
+        });
+  }
+}
+
+class MapStyleFeatures extends StatelessWidget {
+  const MapStyleFeatures({
+    Key? key,
+    required this.satelliteAdded,
+    required this.isTrafficEnabled,
+    this.onNormalSelected,
+    this.onTrafficToggle,
+    this.onSatelliteSelected,
+  }) : super(key: key);
+  final VoidCallback? onTrafficToggle;
+  final VoidCallback? onNormalSelected;
+  final VoidCallback? onSatelliteSelected;
+  final bool satelliteAdded;
+  final bool isTrafficEnabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Map style',
+            style: TextStyle(fontSize: 18),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            onTap: onNormalSelected,
+            selected: !satelliteAdded,
+            leading: ClipRRect(
+              child: Image.asset(
+                "assets/image/map2.png",
+                width: 50,
+                height: 50,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            title: const Text("Normal"),
+          ),
+          ListTile(
+            onTap: onSatelliteSelected,
+            selected: satelliteAdded,
+            leading: ClipRRect(
+              child: Image.asset(
+                "assets/image/map1.png",
+                width: 50,
+                height: 50,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            title: const Text("Satellite"),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Map Features',
+            style: TextStyle(fontSize: 18),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            onTap: onTrafficToggle,
+            selected: isTrafficEnabled,
+            leading: ClipRRect(
+              child: Image.asset(
+                "assets/image/traffic.png",
+                width: 50,
+                height: 50,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            title: const Text("Traffic"),
+          ),
+          const SizedBox(height: 60),
+        ],
+      ),
+    );
   }
 }

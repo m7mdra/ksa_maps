@@ -64,13 +64,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "3.0.1"
-  cupertino_icons:
-    dependency: "direct main"
-    description:
-      name: cupertino_icons
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.0.4"
   dio:
     dependency: "direct main"
     description:
@@ -148,7 +141,7 @@ packages:
       name: image
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.1.0"
+    version: "3.1.1"
   infinite_scroll_pagination:
     dependency: "direct main"
     description:
@@ -202,27 +195,27 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
-      resolved-ref: "65e7f6bd95ee843ddd64c5d3bce6db5138cc2046"
-      url: "https://github.com/m0nac0/flutter-maplibre-gl.git"
+      ref: HEAD
+      resolved-ref: "306e48601ec4b2447c327c7ba722b9f9452e7aec"
+      url: "https://github.com/m7mdra/maps"
     source: git
     version: "0.15.0"
   maplibre_gl_platform_interface:
     dependency: transitive
     description:
       path: maplibre_gl_platform_interface
-      ref: main
-      resolved-ref: "65e7f6bd95ee843ddd64c5d3bce6db5138cc2046"
-      url: "https://github.com/m0nac0/flutter-maplibre-gl.git"
+      ref: HEAD
+      resolved-ref: "306e48601ec4b2447c327c7ba722b9f9452e7aec"
+      url: "https://github.com/m7mdra/maps"
     source: git
     version: "0.15.0"
   maplibre_gl_web:
     dependency: transitive
     description:
       path: maplibre_gl_web
-      ref: main
-      resolved-ref: "65e7f6bd95ee843ddd64c5d3bce6db5138cc2046"
-      url: "https://github.com/m0nac0/flutter-maplibre-gl.git"
+      ref: HEAD
+      resolved-ref: "306e48601ec4b2447c327c7ba722b9f9452e7aec"
+      url: "https://github.com/m7mdra/maps"
     source: git
     version: "0.15.0"
   matcher:
@@ -432,7 +425,7 @@ packages:
       name: win32
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.3.3"
+    version: "2.3.6"
   xdg_directories:
     dependency: transitive
     description:

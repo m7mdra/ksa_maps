@@ -32,11 +32,8 @@ dependencies:
 
   maplibre_gl:
     git:
-        url: https://github.com/m0nac0/flutter-maplibre-gl.git
-        ref: main
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.2
+        url: https://github.com/m7mdra/maps
+
   path_provider: ^2.0.8
   location: ^4.3.0
   dio: ^4.0.4
@@ -46,6 +43,7 @@ dependencies:
   infinite_scroll_pagination: ^3.1.0
   pretty_dio_logger: ^1.1.1
   flutter_plugin_android_lifecycle: ^2.0.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -69,7 +67,7 @@ flutter:
   uses-material-design: true
   assets:
 
-    - assets/image/marker.png
+    - assets/image/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

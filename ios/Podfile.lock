@@ -8,16 +8,16 @@ PODS:
     - MapLibre (~> 5.12.1)
     - MapLibreAnnotationExtension (~> 0.0.1-beta.2)
   - MapLibreAnnotationExtension (0.0.1-beta.2):
-    - MapLibre (~> 5.12.0)
+    - MapLibre (~> 5.12.1)
   - path_provider_ios (0.0.1):
     - Flutter
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - location (from `.symlinks/plugins/location/ios`)
-  - MapLibre (from `https://github.com/m0nac0/maplibre-cocoapods.git`)
+  - MapLibre (from `https://github.com/m7mdra/maplibre-cocoapods.git`)
   - maplibre_gl (from `.symlinks/plugins/maplibre_gl/ios`)
-  - MapLibreAnnotationExtension (from `https://github.com/m0nac0/maplibre-annotation-extension.git`)
+  - MapLibreAnnotationExtension (from `https://github.com/m7mdra/maplibre-annotation-extension.git`)
   - path_provider_ios (from `.symlinks/plugins/path_provider_ios/ios`)
 
 EXTERNAL SOURCES:
@@ -26,30 +26,30 @@ EXTERNAL SOURCES:
   location:
     :path: ".symlinks/plugins/location/ios"
   MapLibre:
-    :git: https://github.com/m0nac0/maplibre-cocoapods.git
+    :git: https://github.com/m7mdra/maplibre-cocoapods.git
   maplibre_gl:
     :path: ".symlinks/plugins/maplibre_gl/ios"
   MapLibreAnnotationExtension:
-    :git: https://github.com/m0nac0/maplibre-annotation-extension.git
+    :git: https://github.com/m7mdra/maplibre-annotation-extension.git
   path_provider_ios:
     :path: ".symlinks/plugins/path_provider_ios/ios"
 
 CHECKOUT OPTIONS:
   MapLibre:
-    :commit: 552f0bf90755f6e00cb5882a5c0c89bd4d8633d0
-    :git: https://github.com/m0nac0/maplibre-cocoapods.git
+    :commit: 1594d1e6fe6b196ee5ffc4254fb37ac1a71ae8e3
+    :git: https://github.com/m7mdra/maplibre-cocoapods.git
   MapLibreAnnotationExtension:
-    :commit: d7dee65155fd50bfab7f94a484eac05ff09beea9
-    :git: https://github.com/m0nac0/maplibre-annotation-extension.git
+    :commit: 0f04f80396f9baade8a4e9fdc590a0730193803f
+    :git: https://github.com/m7mdra/maplibre-annotation-extension.git
 
 SPEC CHECKSUMS:
   Flutter: 50d75fe2f02b26cc09d224853bb45737f8b3214a
   location: 3a2eed4dd2fab25e7b7baf2a9efefe82b512d740
   MapLibre: d9f0a2d2b0e0a83611bb7bcb03ef2bcd701efb56
   maplibre_gl: 9a036eeac06dcf153f84d90c33099fb40b7e15e0
-  MapLibreAnnotationExtension: 6a76d7ea48a44953095fbf95331ac67c7f4fa0be
+  MapLibreAnnotationExtension: f0ce1686d75935e7382f82db41b92b601b7be0f0
   path_provider_ios: 7d7ce634493af4477d156294792024ec3485acd5
 
-PODFILE CHECKSUM: 5073e31c903bae7b137edc3633bfe650349ff045
+PODFILE CHECKSUM: ffb200b803d26c91f0f3f1c2bfe72c3454c058a7
 
 COCOAPODS: 1.11.2
