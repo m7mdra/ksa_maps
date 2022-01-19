@@ -165,9 +165,8 @@ class _SearchPageState extends State<SearchPage> {
         margin: const EdgeInsets.all(8),
         child: Row(children: [
           const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(horizontal: 8),
               child: BackButton(color: Colors.grey)),
-          const SizedBox(width: 16),
           Expanded(
             child: TextField(
               controller: _textEditingController,

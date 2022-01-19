@@ -9,6 +9,7 @@ import 'package:ksa_maps/ui/search/search_page.dart';
 import 'package:ksa_maps/ui/widget/360_button.dart';
 import 'package:ksa_maps/ui/widget/layers_button.dart';
 import 'package:ksa_maps/ui/widget/location_button.dart';
+import 'package:ksa_maps/ui/widget/map_style_features.dart';
 import 'package:ksa_maps/ui/widget/map_zoom_controls.dart';
 import 'package:ksa_maps/ui/widget/search_widget.dart';
 import 'package:location/location.dart';
@@ -30,6 +31,7 @@ class _HomePageState extends State<HomePage> {
   var cameraTilted = false;
   var _satelliteAdded = false;
   var _trafficAdded = false;
+  QueryResult? _searchResult;
 
   void _onMapReady(MaplibreMapController controller) async {
     _mapController = controller;
@@ -59,9 +61,14 @@ class _HomePageState extends State<HomePage> {
         });
   }
 
-  void _resetAll() {
-    _mapController?.clearSymbols();
-    _mapController?.clearLines();
+  void _resetAll() async {
+    setState(() {
+      _searchResult = null;
+    });
+    await _mapController?.clearSymbols();
+    await _mapController?.clearLines();
+    await _mapController?.clearCircles();
+    await _mapController?.clearFills();
   }
 
   void _locateUser() async {
@@ -178,42 +185,51 @@ class _HomePageState extends State<HomePage> {
               onMapCreated: _onMapReady,
             ),
             if (_currentSelection == 0)
-              ClickableSearchWidget(onTap: () async {
-                var bounds = await _mapController?.getVisibleRegion();
+              ClickableSearchWidget(
+                  text: _searchResult?.name ,
+                  subText: _searchResult?.fullAddress,
+                  onTap: () async {
+                    var bounds = await _mapController?.getVisibleRegion();
 
-                if (bounds != null) {
-                  LatLng center = LatLng(
-                    (bounds.northeast.latitude + bounds.southwest.latitude) / 2,
-                    (bounds.northeast.longitude + bounds.southwest.longitude) /
-                        2,
-                  );
-                  var result = await Navigator.push<QueryResult>(context,
-                      MaterialPageRoute(builder: (context) {
-                    return SearchPage(
-                      center: [center.latitude, center.longitude],
-                      bounds: [
-                        bounds.northeast.latitude,
-                        bounds.northeast.longitude,
-                        bounds.southwest.latitude,
-                        bounds.southwest.longitude
-                      ],
-                    );
-                  }));
-                  if (result != null) {
-                    await _mapController?.addImage(
-                        "marker", await loadMarkerImage());
-                    await _mapController?.addSymbol(
-                        SymbolOptions(
-                            geometry: result.coordinates(),
-                             iconSize: 3.5,
-                            iconImage: "marker"),
-                        result.toJson());
-                    await _mapController?.animateCamera(
-                        CameraUpdate.newCameraPosition(CameraPosition(
-                            target: result.coordinates(), zoom: 15)));
-                  }
-                }
-              })
+                    if (bounds != null) {
+                      LatLng center = LatLng(
+                        (bounds.northeast.latitude +
+                                bounds.southwest.latitude) /
+                            2,
+                        (bounds.northeast.longitude +
+                                bounds.southwest.longitude) /
+                            2,
+                      );
+                      var result = await Navigator.push<QueryResult>(context,
+                          MaterialPageRoute(builder: (context) {
+                        return SearchPage(
+                          center: [center.latitude, center.longitude],
+                          bounds: [
+                            bounds.northeast.latitude,
+                            bounds.northeast.longitude,
+                            bounds.southwest.latitude,
+                            bounds.southwest.longitude
+                          ],
+                        );
+                      }));
+                      if (result != null) {
+                        await _mapController?.addImage(
+                            "marker", await loadMarkerImage());
+                        await _mapController?.addSymbol(
+                            SymbolOptions(
+                                geometry: result.coordinates(),
+                                iconSize: 3.5,
+                                iconImage: "marker"),
+                            result.toJson());
+                        await _mapController?.animateCamera(
+                            CameraUpdate.newCameraPosition(CameraPosition(
+                                target: result.coordinates(), zoom: 15)));
+                        setState(() {
+                          _searchResult = result;
+                        });
+                      }
+                    }
+                  })
             else if (_currentSelection == 1)
               const Icon(Icons.alt_route),
             Align(
@@ -263,6 +279,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onSelectionChanged(page) {
+    _resetAll();
     setState(() {
       _currentSelection = page;
     });
@@ -330,7 +347,7 @@ class _HomePageState extends State<HomePage> {
                                 1,
                                 "limegreen"
                               ],
-                              lineWidth:  2,
+                              lineWidth: 2,
                               lineCap: "round",
                               lineJoin: "round",
                             ),
@@ -351,90 +368,5 @@ class _HomePageState extends State<HomePage> {
           );
         });
   }
-
 }
 
-
-class MapStyleFeatures extends StatelessWidget {
-  const MapStyleFeatures({
-    Key? key,
-    required this.satelliteAdded,
-    required this.isTrafficEnabled,
-    this.onNormalSelected,
-    this.onTrafficToggle,
-    this.onSatelliteSelected,
-  }) : super(key: key);
-  final VoidCallback? onTrafficToggle;
-  final VoidCallback? onNormalSelected;
-  final VoidCallback? onSatelliteSelected;
-  final bool satelliteAdded;
-  final bool isTrafficEnabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Map style',
-            style: TextStyle(fontSize: 18),
-          ),
-          const SizedBox(height: 16),
-          ListTile(
-            onTap: onNormalSelected,
-            selected: !satelliteAdded,
-            subtitle: Text('Map Data and APIs - THTC Maps'),
-            leading: ClipRRect(
-              child: Image.asset(
-                "assets/image/map2.png",
-                width: 50,
-                height: 50,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            title: const Text("Normal"),
-          ),
-          ListTile(
-            onTap: onSatelliteSelected,
-            selected: satelliteAdded,
-            subtitle: const Text(
-                'Imagery: Esri, Maxar, Earthstar Geographics, CNES/Airbus DS, USDA FSA, USGS, Aerogrid, IGN, IGP, and the GIS User Community'),
-            leading: ClipRRect(
-              child: Image.asset(
-                "assets/image/map1.png",
-                width: 50,
-                height: 50,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            title: const Text("Satellite"),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Map Features',
-            style: TextStyle(fontSize: 18),
-          ),
-          const SizedBox(height: 16),
-          ListTile(
-            onTap: onTrafficToggle,
-            selected: isTrafficEnabled,
-            subtitle: const Text("Traffic: Data Source © TomTom"),
-            leading: ClipRRect(
-              child: Image.asset(
-                "assets/image/traffic.png",
-                width: 50,
-                height: 50,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            title: const Text("Traffic"),
-          ),
-          const SizedBox(height: 60),
-        ],
-      ),
-    );
-  }
-}
