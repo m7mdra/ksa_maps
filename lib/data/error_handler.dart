@@ -22,8 +22,6 @@ Error handleDioError(DioError error) {
     case DioErrorType.other:
     default:
       return GenericError();
-
-      break;
   }
 }
 

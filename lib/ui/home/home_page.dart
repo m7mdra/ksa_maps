@@ -205,6 +205,7 @@ class _HomePageState extends State<HomePage> {
                     await _mapController?.addSymbol(
                         SymbolOptions(
                             geometry: result.coordinates(),
+                             iconSize: 3.5,
                             iconImage: "marker"),
                         result.toJson());
                     await _mapController?.animateCamera(
@@ -329,7 +330,7 @@ class _HomePageState extends State<HomePage> {
                                 1,
                                 "limegreen"
                               ],
-                              lineWidth: 1,
+                              lineWidth:  2,
                               lineCap: "round",
                               lineJoin: "round",
                             ),
