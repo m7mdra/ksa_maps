@@ -1,25 +1,20 @@
 import 'package:dio/dio.dart';
-import 'package:ksa_maps/data/model/query_result.dart';
 
 import 'error_handler.dart';
+import 'map_data_repository.dart';
+import 'model/query_result.dart';
 
-class MapDataClient {
+class MapDataClient implements MapDataRepository {
   final Dio _httpClient;
   CancelToken? _cancelToken;
 
   MapDataClient(this._httpClient);
 
-  //https://ksamaps.com/api/geosearch?query=searc&lang=en&ser=1&page=1&bounds=38.154450,22.529667,66.279450,27.686959&center=52.216950,25.135531
-
+  @override
   Future<QueryResultResponse> geoSearch(String query, String lang,
       List<double> bounds, List<double> center) async {
     try {
-      if (_cancelToken != null) {
-        print("cancel cancelToken ${_cancelToken}");
-        _cancelToken?.cancel();
-      }
-      _cancelToken = CancelToken();
-      print("create cancelToken ${_cancelToken}");
+
       var response = await _httpClient.get(
         "geosearch",
         queryParameters: {
@@ -28,9 +23,7 @@ class MapDataClient {
           "lang": "en",
           "bounds": bounds.join(),
           "center": center.join(),
-          "ser": 1,
-          "key":
-              "15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482"
+          "ser": 1
         },
       );
       if (response.data is Map) {
@@ -44,29 +37,21 @@ class MapDataClient {
       rethrow;
     }
   }
-  Future<QueryResultResponse> geoSearchNextPage(String query, String lang, int page,
-      List<double> bounds, List<double> center) async {
+
+  @override
+  Future<QueryResultResponse> geoSearchNextPage(String query, String lang,
+      int page, List<double> bounds, List<double> center) async {
     try {
-      if (_cancelToken != null) {
-        print("cancel cancelToken ${_cancelToken}");
-        _cancelToken?.cancel();
-      }
-      _cancelToken = CancelToken();
-      print("create cancelToken ${_cancelToken}");
-      var response = await _httpClient.get(
-        "geosearch",
-        queryParameters: {
-          "query": query,
-          "page": page,
-          "lang": "en",
-          "bounds": bounds.join(),
-          "center": center.join(),
-          "ser": 1,
-          "key":
-              "15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482"
-        },
-        cancelToken: _cancelToken
-      );
+
+      var response = await _httpClient.get("geosearch",
+          queryParameters: {
+            "query": query,
+            "page": page,
+            "lang": "en",
+            "bounds": bounds.join(),
+            "center": center.join(),
+            "ser": 1
+          });
       if (response.data is Map) {
         return QueryResultResponse.fromJson([]);
       } else {

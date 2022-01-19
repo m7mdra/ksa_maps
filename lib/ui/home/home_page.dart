@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:ksa_maps/data/data.dart';
+import 'package:ksa_maps/data/ksamaps_resources.dart';
 import 'package:ksa_maps/ui/search/search_page.dart';
 import 'package:ksa_maps/ui/widget/360_button.dart';
 import 'package:ksa_maps/ui/widget/layers_button.dart';
@@ -13,8 +14,6 @@ import 'package:ksa_maps/ui/widget/search_widget.dart';
 import 'package:location/location.dart';
 import 'package:maplibre_gl/mapbox_gl.dart';
 
-const kAccessKey =
-    "15b07b3081c5b96eba9ebbe1d31e929deb757ea242d46853fed3fa85bb4fe02a2db2e6f85390316d63f473bf3a2fc2768e62efebac6e30f08cc8c80429cec482";
 const kPoiLayers = ['pois1', 'pois2', 'pois3', 'pois4', 'pois5'];
 
 class HomePage extends StatefulWidget {
@@ -135,22 +134,19 @@ class _HomePageState extends State<HomePage> {
                 await _mapController?.addSource(
                   "satellite",
                   const RasterSourceProperties(
-                      tiles: [
-                        'https://ksamaps.com/api/satellite/{z}/{x}/{y}.png?key=$kAccessKey'
-                      ],
+                      tiles: [KsaMapsResources.kRasterSatelliteTileUrl],
                       tileSize: 256,
                       attribution:
-                          'Map tiles by <a target="_top" rel="noopener" href="http://stamen.com">Stamen Design</a>, under <a target="_top" rel="noopener" href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a target="_top" rel="noopener" href="http://openstreetmap.org">OpenStreetMap</a>, under <a target="_top" rel="noopener" href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>'),
+                          KsaMapsResources.kRasterSatelliteTileAttribution),
                 );
                 await _mapController?.addSource(
                     "traffic",
                     const VectorSourceProperties(
-                      tiles: [
-                        "https://ksamaps.com/api/traffic/{z}/{x}/{y}.pbf?key=$kAccessKey"
-                      ],
+                      tiles: [KsaMapsResources.kVectorTrafficTileUrl],
                       minzoom: 9,
                       maxzoom: 19,
-                      attribution: "Traffic: Data Source © TomTom",
+                      attribution:
+                          KsaMapsResources.kVectorTrafficTileAttribution,
                     ));
               },
 
@@ -175,7 +171,7 @@ class _HomePageState extends State<HomePage> {
                 }
 */
               },
-              styleString: "https://ksamaps.com/api/style?key=$kAccessKey",
+              styleString: KsaMapsResources.kStyleTilesUrl,
               compassEnabled: true,
               initialCameraPosition: const CameraPosition(
                   target: LatLng(24.774265, 46.738586), zoom: 5),
@@ -354,7 +350,9 @@ class _HomePageState extends State<HomePage> {
           );
         });
   }
+
 }
+
 
 class MapStyleFeatures extends StatelessWidget {
   const MapStyleFeatures({

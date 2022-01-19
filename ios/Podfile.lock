@@ -11,6 +11,8 @@ PODS:
     - MapLibre (~> 5.12.1)
   - path_provider_ios (0.0.1):
     - Flutter
+  - shared_preferences_ios (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
@@ -19,6 +21,7 @@ DEPENDENCIES:
   - maplibre_gl (from `.symlinks/plugins/maplibre_gl/ios`)
   - MapLibreAnnotationExtension (from `https://github.com/m7mdra/maplibre-annotation-extension.git`)
   - path_provider_ios (from `.symlinks/plugins/path_provider_ios/ios`)
+  - shared_preferences_ios (from `.symlinks/plugins/shared_preferences_ios/ios`)
 
 EXTERNAL SOURCES:
   Flutter:
@@ -33,6 +36,8 @@ EXTERNAL SOURCES:
     :git: https://github.com/m7mdra/maplibre-annotation-extension.git
   path_provider_ios:
     :path: ".symlinks/plugins/path_provider_ios/ios"
+  shared_preferences_ios:
+    :path: ".symlinks/plugins/shared_preferences_ios/ios"
 
 CHECKOUT OPTIONS:
   MapLibre:
@@ -49,6 +54,7 @@ SPEC CHECKSUMS:
   maplibre_gl: 9a036eeac06dcf153f84d90c33099fb40b7e15e0
   MapLibreAnnotationExtension: f0ce1686d75935e7382f82db41b92b601b7be0f0
   path_provider_ios: 7d7ce634493af4477d156294792024ec3485acd5
+  shared_preferences_ios: aef470a42dc4675a1cdd50e3158b42e3d1232b32
 
 PODFILE CHECKSUM: ffb200b803d26c91f0f3f1c2bfe72c3454c058a7
 

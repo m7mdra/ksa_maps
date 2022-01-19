@@ -1,11 +1,9 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
-import 'package:ksa_maps/data/map_data_client.dart';
-import 'package:ksa_maps/data/model/query_result.dart';
+import 'package:ksa_maps/data/data.dart';
+import 'package:ksa_maps/di/dependency_provider.dart';
 import 'package:ksa_maps/ui/search/bloc/geo_search_bloc.dart';
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 class SearchPage extends StatefulWidget {
   final List<double> center;
@@ -21,40 +19,60 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   late GeoSearchBloc _bloc;
   final _pageController = PagingController<int, QueryResult>(firstPageKey: 1);
-  final textEditingController = TextEditingController();
-  bool searchBarEmpty = true;
-  String _searchTerm = "";
+  final _textEditingController = TextEditingController();
+  final _results = <QueryResult>[];
+  var _isLoading = false;
+  var _isLastPage = false;
 
   @override
   void initState() {
     super.initState();
-    var dio = Dio(BaseOptions(baseUrl: "https://ksamaps.com/api/"));
-    dio.interceptors.add(PrettyDioLogger(responseBody: false));
-    _bloc = GeoSearchBloc(MapDataClient(dio));
+    _bloc = GeoSearchBloc(D.provide());
 
     _pageController.addPageRequestListener((pageKey) {
       _bloc.add(LoadNextSearchPage(
-          query: textEditingController.text,
+          query: _textEditingController.text,
           lang: Localizations.localeOf(context).languageCode,
           bounds: widget.bounds,
           center: widget.center));
     });
-    _bloc.stream.listen((state) {
-      if (state is GeoSearchError) {
-        _pageController.error = "Failed to load data, try again";
+    _bloc.stream.listen(_onNewState);
+  }
+
+  void _onNewState(state) {
+    if (state is GeoSearchError) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+
+    if (state is GeoSearchClearState) {
+      setState(() {
+        _isLoading = false;
+        _results.clear();
+      });
+    }
+    if (state is GeoSearchEmpty) {}
+    if (state is GeoSearchLoading) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+    if (state is GeoSearchResult) {
+      if (state.lastPage) {
+        _results.addAll(state.list);
+        setState(() {
+          _isLastPage = true;
+          _isLoading = false;
+        });
+      } else {
+        _results.addAll(state.list);
+        setState(() {
+          _isLastPage = false;
+          _isLoading = false;
+        });
       }
-      if(state is GeoSearchClearState){
-        print("clearing search result");
-        _pageController.refresh();
-      }
-      if (state is GeoSearchResult) {
-        if (state.lastPage) {
-          _pageController.appendLastPage(state.list);
-        } else {
-          _pageController.appendPage(state.list, state.pageNumber);
-        }
-      }
-    });
+    }
   }
 
   @override
@@ -68,71 +86,112 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Card(
-                margin: const EdgeInsets.all(8),
-                child: Row(children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: searchBarEmpty
-                        ? const BackButton(color: Colors.grey)
-                        : const Icon(Icons.search, color: Colors.grey),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: textEditingController,
-                      onChanged: (text) {
-                        if (text.length <= 3) return;
-
-                        setState(() {
-                          searchBarEmpty = text.isEmpty;
-                        });
-
-                        _bloc.add(SubmitSearchKey(
-                            query: text,
-                            lang: Localizations.localeOf(context).languageCode,
-                            bounds: widget.bounds,
-                            center: widget.center));
-                      },
-                      decoration: const InputDecoration(
-                          border:
-                              OutlineInputBorder(borderSide: BorderSide.none),
-                          contentPadding: EdgeInsets.all(12)),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      setState(() {
-                        searchBarEmpty = true;
-                      });
-                      textEditingController.clear();
-                      _pageController.refresh();
-                    },
-                  )
-                ])),
-            Expanded(
-                child: searchBarEmpty
-                    ? Container()
-                    : PagedListView<int, QueryResult>(
-                        pagingController: _pageController,
-                        builderDelegate: PagedChildBuilderDelegate(
-                            itemBuilder: (context, item, index) {
-                          return ListTile(
-                            onTap: () {
-                              Navigator.pop(context, item);
-                            },
-                            title: Text(item.name ?? ""),
-                            subtitle: Text(item.fullAddress ?? ""),
-                            leading: const Icon(Icons.location_on_outlined),
-                          );
-                        }),
-                      ))
+            _buildResultListView(),
+            _buildSearchCard(context),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildResultListView() {
+    return BlocBuilder(
+      bloc: _bloc,
+      builder: (BuildContext context, state) {
+        if (state is GeoSearchLoading) {
+          return _loadingProgress();
+        }
+        if (state is GeoSearchEmpty) {
+          return const Center(
+              child: Text("No Result found matching the keywork"));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.only(top: 70),
+          itemBuilder: (context, index) {
+            if (index == _results.length) {
+              if (_isLastPage) {
+                return Container();
+              } else {
+                if (_isLoading) {
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: _loadingProgress(),
+                  );
+                } else {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: OutlinedButton(
+                      onPressed: () {
+                        _bloc.add(LoadNextSearchPage(
+                            query: _textEditingController.text,
+                            lang: Localizations.localeOf(context).languageCode,
+                            bounds: widget.bounds,
+                            center: widget.center));
+
+                        setState(() {
+                          _isLoading = true;
+                        });
+                      },
+                      child: const Text("Load more"),
+                    ),
+                  );
+                }
+              }
+            } else {
+              var item = _results[index];
+
+              return ListTile(
+                onTap: () {
+                  Navigator.pop(context, item);
+                },
+                title: Text(item.name ?? ""),
+                subtitle: Text(item.fullAddress ?? ""),
+                leading: const Icon(Icons.location_on_outlined),
+              );
+            }
+          },
+          itemCount: _results.isEmpty ? 0 : _results.length + 1,
+        );
+      },
+    );
+  }
+
+  Center _loadingProgress() => const Center(child: CircularProgressIndicator());
+
+  Card _buildSearchCard(BuildContext context) {
+    return Card(
+        margin: const EdgeInsets.all(8),
+        child: Row(children: [
+          const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: BackButton(color: Colors.grey)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextField(
+              controller: _textEditingController,
+              onChanged: (text) {
+                _bloc.add(SubmitSearchKey(
+                    query: text,
+                    lang: Localizations.localeOf(context).languageCode,
+                    bounds: widget.bounds,
+                    center: widget.center));
+              },
+              decoration: const InputDecoration(
+                  border: OutlineInputBorder(borderSide: BorderSide.none),
+                  contentPadding: EdgeInsets.all(12)),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.clear),
+            onPressed: () {
+              setState(() {
+                _results.clear();
+                _textEditingController.clear();
+              });
+            },
+          )
+        ]));
   }
 }

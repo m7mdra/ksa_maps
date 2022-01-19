@@ -3,7 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:ksa_maps/ui/home/home_page.dart';
 
-void main() {
+import 'di/dependency_provider.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await D.build();
   HttpOverrides.global = MyHttpOverrides();
   runApp(const MyApp());
 }
