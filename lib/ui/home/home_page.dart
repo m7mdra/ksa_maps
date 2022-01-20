@@ -7,6 +7,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:ksa_maps/data/data.dart';
 import 'package:ksa_maps/data/ksamaps_resources.dart';
+import 'package:ksa_maps/di/dependency_provider.dart';
 import 'package:ksa_maps/ui/search/search_page.dart';
 import 'package:ksa_maps/ui/widget/360_button.dart';
 import 'package:ksa_maps/ui/widget/layers_button.dart';
@@ -203,15 +204,39 @@ class _HomePageState extends State<HomePage> {
                                     _routesPoint.first.locationPoint;
                                 if (queryResultLast != null &&
                                     queryResultFirst != null) {
-                                  print("should search something");
+                                  LatLngBounds latLngBounds;
+                                  if (queryResultLast.lat! <=
+                                      queryResultFirst.lat!) {
+                                    latLngBounds = LatLngBounds(
+                                        southwest:
+                                            queryResultLast.coordinates(),
+                                        northeast:
+                                            queryResultFirst.coordinates());
+                                  } else {
+                                    latLngBounds = LatLngBounds(
+                                        northeast:
+                                            queryResultLast.coordinates(),
+                                        southwest:
+                                            queryResultFirst.coordinates());
+                                  }
                                   _mapController?.animateCamera(
-                                      CameraUpdate.newLatLngBounds(LatLngBounds(
-                                          southwest:
-                                              queryResultLast.coordinates(),
-                                          northeast:
-                                              queryResultFirst.coordinates())));
+                                      CameraUpdate.newLatLngBounds(latLngBounds,
+                                          bottom: 100,
+                                          top: 100,
+                                          right: 100,
+                                          left: 100));
+                                  var coordinates = _routesPoint
+                                      .map(
+                                          (e) => e.locationPoint?.coordinates())
+                                      .map((e) =>
+                                          "${e?.longitude},${e?.latitude}")
+                                      .toList();
+                                  MapDataClient(D.provide())
+                                      .findRoute(coordinates.join(";"))
+                                      .then((value) {
+                                    print(value.code);
+                                  });
                                 } else {
-
                                   print("should not search");
                                 }
                               }
