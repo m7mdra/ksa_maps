@@ -34,7 +34,7 @@ class _HomePageState extends State<HomePage> {
   var _satelliteAdded = false;
   var _trafficAdded = false;
   QueryResult? _searchResult;
-  var _routesPoint = <RoutePoint>[
+  final _routesPoint = <RoutePoint>[
     RoutePoint(routeType: RouteType.start),
     RoutePoint(routeType: RouteType.end)
   ];
@@ -78,6 +78,11 @@ class _HomePageState extends State<HomePage> {
   void _resetAll() async {
     setState(() {
       _searchResult = null;
+      _routesPoint.clear();
+      _routesPoint.addAll([
+        RoutePoint(routeType: RouteType.start),
+        RoutePoint(routeType: RouteType.end)
+      ]);
     });
     await _mapController?.clearSymbols();
     await _mapController?.clearLines();
@@ -184,43 +189,65 @@ class _HomePageState extends State<HomePage> {
                         shrinkWrap: true,
                         itemBuilder: (context, index) {
                           var routesPoint = _routesPoint[index];
-                          return Row(
-                            children: [
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
+                          return GestureDetector(
+                            onTap: () async {
+                              var result = await _getQueryResult();
+                              if (result != null) {
+                                setState(() {
+                                  routesPoint.locationPoint = result;
+                                });
 
-                                children: [
+                                var queryResultLast =
+                                    _routesPoint.last.locationPoint;
+                                var queryResultFirst =
+                                    _routesPoint.first.locationPoint;
+                                if (queryResultLast != null &&
+                                    queryResultFirst != null) {
+                                  print("should search something");
+                                  _mapController?.animateCamera(
+                                      CameraUpdate.newLatLngBounds(LatLngBounds(
+                                          southwest:
+                                              queryResultLast.coordinates(),
+                                          northeast:
+                                              queryResultFirst.coordinates())));
+                                } else {
 
-                                  RouteTypeWidget(
-                                      routeType: routesPoint.routeType),
-                                ],
-                              ),
-                              Expanded(
-                                child: Container(
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 8),
-                                  child: Text(routesPoint.routeType.name),
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                      color: Colors.grey.shade300,
-                                      borderRadius: BorderRadius.circular(4)),
+                                  print("should not search");
+                                }
+                              }
+                            },
+                            child: Row(
+                              children: [
+                                RouteTypeWidget(
+                                    routeType: routesPoint.routeType),
+                                Expanded(
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    child: Text(
+                                        routesPoint.locationPoint?.name ?? ""),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(4)),
+                                  ),
                                 ),
-                              ),
-                              Visibility(
-                                child: IconButton(
-                                    onPressed: () {
-                                      _routesPoint.removeAt(index);
-                                      setState(() {});
-                                    },
-                                    icon: const Icon(Icons.delete_forever)),
-                                visible:
-                                    routesPoint.routeType == RouteType.stop,
-                                maintainSize: true,
-                                maintainAnimation: true,
-                                maintainState: true,
-                                maintainInteractivity: false,
-                              )
-                            ],
+                                Visibility(
+                                  child: IconButton(
+                                      onPressed: () {
+                                        _routesPoint.removeAt(index);
+                                        setState(() {});
+                                      },
+                                      icon: const Icon(Icons.delete_forever)),
+                                  visible:
+                                      routesPoint.routeType == RouteType.stop,
+                                  maintainSize: true,
+                                  maintainAnimation: true,
+                                  maintainState: true,
+                                  maintainInteractivity: false,
+                                )
+                              ],
+                            ),
                           );
                         },
                         itemCount: _routesPoint.length),
@@ -297,6 +324,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onSelectionChanged(page) {
+    if (_currentSelection == page) return;
+    _resetAll();
     setState(() {
       _currentSelection = page;
     });
@@ -327,18 +356,12 @@ class _HomePageState extends State<HomePage> {
                 },
                 onTrafficToggle: () async {
                   if (_trafficAdded) {
-                    print("removing traffic ");
-
                     _mapController?.removeLayer("traffic").then((_) {
-                      print("remove traffic layer");
                       setState(() {
                         _trafficAdded = false;
                       });
-                    }).catchError((error) {
-                      print("remove traffic layer error");
-                    });
+                    }).catchError((error) {});
                   } else {
-                    print("adding traffic ");
                     _mapController
                         ?.addLayer(
                             "traffic",
@@ -371,13 +394,10 @@ class _HomePageState extends State<HomePage> {
                             sourceLayer: "Traffic flow",
                             belowLayerId: "stnw4_label")
                         .then((_) {
-                      print("add traffic layer");
                       setState(() {
                         _trafficAdded = true;
                       });
-                    }).catchError((error) {
-                      print("add traffic layer error");
-                    });
+                    }).catchError((error) {});
                   }
                 },
               );
@@ -386,7 +406,7 @@ class _HomePageState extends State<HomePage> {
         });
   }
 
-  void _onSearchBarTap() async {
+  Future<QueryResult?> _getQueryResult() async {
     var bounds = await _mapController?.getVisibleRegion();
 
     if (bounds != null) {
@@ -406,20 +426,25 @@ class _HomePageState extends State<HomePage> {
           ],
         );
       }));
-      if (result != null) {
-        await _mapController?.addImage("marker", await loadMarkerImage());
-        await _mapController?.addSymbol(
-            SymbolOptions(
-                geometry: result.coordinates(),
-                iconSize: 3.5,
-                iconImage: "marker"),
-            result.toJson());
-        await _mapController?.animateCamera(CameraUpdate.newCameraPosition(
-            CameraPosition(target: result.coordinates(), zoom: 15)));
-        setState(() {
-          _searchResult = result;
-        });
-      }
+      return result;
+    }
+  }
+
+  void _onSearchBarTap() async {
+    var result = await _getQueryResult();
+    if (result != null) {
+      await _mapController?.addImage("marker", await loadMarkerImage());
+      await _mapController?.addSymbol(
+          SymbolOptions(
+              geometry: result.coordinates(),
+              iconSize: 3.5,
+              iconImage: "marker"),
+          result.toJson());
+      await _mapController?.animateCamera(CameraUpdate.newCameraPosition(
+          CameraPosition(target: result.coordinates(), zoom: 15)));
+      setState(() {
+        _searchResult = result;
+      });
     }
   }
 }
