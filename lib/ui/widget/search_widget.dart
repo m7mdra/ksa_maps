@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 class ClickableSearchWidget extends StatelessWidget {
   final VoidCallback? onTap;
   final String? text;
-  final String? subText;
 
-  const ClickableSearchWidget({Key? key, this.onTap, this.text, this.subText})
+  const ClickableSearchWidget({Key? key, this.onTap, this.text})
       : super(key: key);
 
   @override

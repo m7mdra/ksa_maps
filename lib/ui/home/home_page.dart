@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:dotted_decoration/dotted_decoration.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:ksa_maps/data/data.dart';
 import 'package:ksa_maps/data/ksamaps_resources.dart';
@@ -32,8 +34,12 @@ class _HomePageState extends State<HomePage> {
   var _satelliteAdded = false;
   var _trafficAdded = false;
   QueryResult? _searchResult;
+  var _routesPoint = <RoutePoint>[
+    RoutePoint(routeType: RouteType.start),
+    RoutePoint(routeType: RouteType.end)
+  ];
 
-  void _onMapReady(MaplibreMapController controller) async {
+  void _onMapCreated(MaplibreMapController controller) async {
     _mapController = controller;
     _mapController?.onSymbolTapped.add(onSymbolTapped);
   }
@@ -49,12 +55,20 @@ class _HomePageState extends State<HomePage> {
                 title:
                     Text("Direction from:\n${symbol.data?['name'] ?? "Here"}"),
                 subtitle: Text(symbol.data?["fullAddress"]),
-                onTap: () {},
+                onTap: () {
+                  setState(() {
+                    _currentSelection = 1;
+                    Navigator.pop(context);
+                  });
+                },
               ),
               ListTile(
                 title: Text("Direction to:\n${symbol.data?['name'] ?? "Here"}"),
                 subtitle: Text(symbol.data?["fullAddress"]),
-                onTap: () {},
+                onTap: () {
+                  _currentSelection = 1;
+                  Navigator.pop(context);
+                },
               ),
             ], mainAxisSize: MainAxisSize.min),
           );
@@ -123,154 +137,158 @@ class _HomePageState extends State<HomePage> {
         child: Stack(
           children: [
             MaplibreMap(
-              attributionButtonMargins: const Point(-1000, -1000),
-              // logoViewMargins: const Point(-1000, -1000),
-              myLocationTrackingMode: MyLocationTrackingMode.None,
-              myLocationEnabled: false,
-              annotationOrder: const [
-                AnnotationType.symbol,
-                AnnotationType.line,
-                AnnotationType.circle,
-                AnnotationType.fill,
-              ],
-              onStyleLoadedCallback: () async {
-                await _mapController?.addImage(
-                    "marker", await loadMarkerImage());
-
-                await _mapController?.setMapLanguage("name_ar");
-                await _mapController?.addSource(
-                  "satellite",
-                  const RasterSourceProperties(
-                      tiles: [KsaMapsResources.kRasterSatelliteTileUrl],
-                      tileSize: 256,
-                      attribution:
-                          KsaMapsResources.kRasterSatelliteTileAttribution),
-                );
-                await _mapController?.addSource(
-                    "traffic",
-                    const VectorSourceProperties(
-                      tiles: [KsaMapsResources.kVectorTrafficTileUrl],
-                      minzoom: 9,
-                      maxzoom: 19,
-                      attribution:
-                          KsaMapsResources.kVectorTrafficTileAttribution,
-                    ));
-              },
-
-              minMaxZoomPreference: const MinMaxZoomPreference(4.5, 19),
-              myLocationRenderMode: MyLocationRenderMode.NORMAL,
-              zoomGesturesEnabled: true,
-
-              // cameraTargetBounds: CameraTargetBounds(LatLngBounds(
-              //     southwest: LatLng(25.193437, 14.298024),
-              //     northeast: LatLng(67.380937, 33.625229))),
-              onMapClick: (point, coordinates) async {
-/*
-                try {
-                  var features = await _mapController?.queryRenderedFeatures(
-                      Point(point.x - 10 / 2, point.y - 20 / 2),
-                      kPoiLayers, []);
-                  if (features == null || features.isEmpty) return;
-
-                  print(features);
-                } catch (error) {
-                  print(error);
-                }
-*/
-              },
-              styleString: KsaMapsResources.kStyleTilesUrl,
-              compassEnabled: true,
-              initialCameraPosition: const CameraPosition(
-                  target: LatLng(24.774265, 46.738586), zoom: 5),
-              onMapCreated: _onMapReady,
-            ),
-            if (_currentSelection == 0)
-              ClickableSearchWidget(
-                  text: _searchResult?.name ,
-                  subText: _searchResult?.fullAddress,
-                  onTap: () async {
-                    var bounds = await _mapController?.getVisibleRegion();
-
-                    if (bounds != null) {
-                      LatLng center = LatLng(
-                        (bounds.northeast.latitude +
-                                bounds.southwest.latitude) /
-                            2,
-                        (bounds.northeast.longitude +
-                                bounds.southwest.longitude) /
-                            2,
-                      );
-                      var result = await Navigator.push<QueryResult>(context,
-                          MaterialPageRoute(builder: (context) {
-                        return SearchPage(
-                          center: [center.latitude, center.longitude],
-                          bounds: [
-                            bounds.northeast.latitude,
-                            bounds.northeast.longitude,
-                            bounds.southwest.latitude,
-                            bounds.southwest.longitude
-                          ],
-                        );
-                      }));
-                      if (result != null) {
-                        await _mapController?.addImage(
-                            "marker", await loadMarkerImage());
-                        await _mapController?.addSymbol(
-                            SymbolOptions(
-                                geometry: result.coordinates(),
-                                iconSize: 3.5,
-                                iconImage: "marker"),
-                            result.toJson());
-                        await _mapController?.animateCamera(
-                            CameraUpdate.newCameraPosition(CameraPosition(
-                                target: result.coordinates(), zoom: 15)));
-                        setState(() {
-                          _searchResult = result;
-                        });
-                      }
-                    }
-                  })
-            else if (_currentSelection == 1)
-              const Icon(Icons.alt_route),
+                attributionButtonMargins: const Point(-1000, -1000),
+                // logoViewMargins: const Point(-1000, -1000),
+                myLocationTrackingMode: MyLocationTrackingMode.None,
+                myLocationEnabled: false,
+                annotationOrder: const [
+                  AnnotationType.symbol,
+                  AnnotationType.line,
+                  AnnotationType.circle,
+                  AnnotationType.fill,
+                ],
+                onStyleLoadedCallback: _onStyleLoaded,
+                minMaxZoomPreference: const MinMaxZoomPreference(4.5, 19),
+                myLocationRenderMode: MyLocationRenderMode.NORMAL,
+                zoomGesturesEnabled: true,
+                styleString: KsaMapsResources.kStyleTilesUrl,
+                compassEnabled: true,
+                initialCameraPosition: const CameraPosition(
+                    target: LatLng(24.774265, 46.738586), zoom: 5),
+                onMapCreated: _onMapCreated),
             Align(
-                child: LayersButton(onTap: () async {
-                  _showFeatureAndLayerBottomSheet();
-                }),
-                alignment: const Alignment(1, -0.5)),
+                child: LayersButton(onTap: _showFeatureAndLayerBottomSheet),
+                alignment: const Alignment(1, -0.0)),
             Align(
-                child: Button360View(
-                  onTap: () {
-                    var newCameraTilt = 0.0;
-                    if (cameraTilted) {
-                      newCameraTilt = 0.0;
-                    } else {
-                      newCameraTilt = 60.0;
-                    }
-                    setState(() {
-                      cameraTilted = !cameraTilted;
-                    });
-                    _mapController
-                        ?.animateCamera(CameraUpdate.tiltTo(newCameraTilt));
-                  },
-                ),
+                child: Button360View(onTap: _onChangeTiltedTap),
                 alignment: const Alignment(1, 0.75)),
             Align(
-                child: LocationButton(
-                  onTap: _locateUser,
-                ),
+                child: LocationButton(onTap: _locateUser),
                 alignment: const Alignment(1, 1)),
             Align(
-              alignment: const Alignment(1, 0.45),
-              child: MapZoomControls(zoomInCallback: () {
-                _mapController?.animateCamera(CameraUpdate.zoomIn());
-              }, zoomOutCallback: () {
-                _mapController?.animateCamera(CameraUpdate.zoomOut());
-              }),
-            ),
+                alignment: const Alignment(1, 0.45),
+                child: MapZoomControls(
+                    zoomInCallback: zoomInCallback,
+                    zoomOutCallback: zoomOutCallback)),
+            if (_currentSelection == 0)
+              ClickableSearchWidget(
+                  text: _searchResult?.name, onTap: _onSearchBarTap)
+            else if (_currentSelection == 1)
+              Card(
+                margin: const EdgeInsets.all(8),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        shrinkWrap: true,
+                        itemBuilder: (context, index) {
+                          var routesPoint = _routesPoint[index];
+                          return Row(
+                            children: [
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+
+                                children: [
+
+                                  RouteTypeWidget(
+                                      routeType: routesPoint.routeType),
+                                ],
+                              ),
+                              Expanded(
+                                child: Container(
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 8),
+                                  child: Text(routesPoint.routeType.name),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                      color: Colors.grey.shade300,
+                                      borderRadius: BorderRadius.circular(4)),
+                                ),
+                              ),
+                              Visibility(
+                                child: IconButton(
+                                    onPressed: () {
+                                      _routesPoint.removeAt(index);
+                                      setState(() {});
+                                    },
+                                    icon: const Icon(Icons.delete_forever)),
+                                visible:
+                                    routesPoint.routeType == RouteType.stop,
+                                maintainSize: true,
+                                maintainAnimation: true,
+                                maintainState: true,
+                                maintainInteractivity: false,
+                              )
+                            ],
+                          );
+                        },
+                        itemCount: _routesPoint.length),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(children: [
+                      TextButton.icon(
+                          onPressed: () {
+                            _routesPoint.insert(
+                                1, RoutePoint(routeType: RouteType.stop));
+                            setState(() {});
+                          },
+                          label: const Text("Add new stop"),
+                          icon: const Icon(Icons.add_circle_rounded)),
+                      const Spacer(),
+                      Text(
+                          "${_routesPoint.where((value) => value.routeType == RouteType.stop).length} Stops")
+                    ]),
+                  )
+                ]),
+              )
           ],
         ),
       ),
     );
+  }
+
+  void zoomOutCallback() {
+    _mapController?.animateCamera(CameraUpdate.zoomOut());
+  }
+
+  void zoomInCallback() {
+    _mapController?.animateCamera(CameraUpdate.zoomIn());
+  }
+
+  void _onStyleLoaded() async {
+    await _mapController?.addImage("marker", await loadMarkerImage());
+
+    await _mapController?.setMapLanguage("name_ar");
+    await _mapController?.addSource(
+      "satellite",
+      const RasterSourceProperties(
+          tiles: [KsaMapsResources.kRasterSatelliteTileUrl],
+          tileSize: 256,
+          attribution: KsaMapsResources.kRasterSatelliteTileAttribution),
+    );
+    await _mapController?.addSource(
+        "traffic",
+        const VectorSourceProperties(
+          tiles: [KsaMapsResources.kVectorTrafficTileUrl],
+          minzoom: 9,
+          maxzoom: 19,
+          attribution: KsaMapsResources.kVectorTrafficTileAttribution,
+        ));
+  }
+
+  void _onChangeTiltedTap() {
+    var newCameraTilt = 0.0;
+    if (cameraTilted) {
+      newCameraTilt = 0.0;
+    } else {
+      newCameraTilt = 60.0;
+    }
+    setState(() {
+      cameraTilted = !cameraTilted;
+    });
+    _mapController?.animateCamera(CameraUpdate.tiltTo(newCameraTilt));
   }
 
   Future<Uint8List> loadMarkerImage() async {
@@ -279,7 +297,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onSelectionChanged(page) {
-    _resetAll();
     setState(() {
       _currentSelection = page;
     });
@@ -368,5 +385,114 @@ class _HomePageState extends State<HomePage> {
           );
         });
   }
+
+  void _onSearchBarTap() async {
+    var bounds = await _mapController?.getVisibleRegion();
+
+    if (bounds != null) {
+      LatLng center = LatLng(
+        (bounds.northeast.latitude + bounds.southwest.latitude) / 2,
+        (bounds.northeast.longitude + bounds.southwest.longitude) / 2,
+      );
+      var result = await Navigator.push<QueryResult>(context,
+          MaterialPageRoute(builder: (context) {
+        return SearchPage(
+          center: [center.latitude, center.longitude],
+          bounds: [
+            bounds.northeast.latitude,
+            bounds.northeast.longitude,
+            bounds.southwest.latitude,
+            bounds.southwest.longitude
+          ],
+        );
+      }));
+      if (result != null) {
+        await _mapController?.addImage("marker", await loadMarkerImage());
+        await _mapController?.addSymbol(
+            SymbolOptions(
+                geometry: result.coordinates(),
+                iconSize: 3.5,
+                iconImage: "marker"),
+            result.toJson());
+        await _mapController?.animateCamera(CameraUpdate.newCameraPosition(
+            CameraPosition(target: result.coordinates(), zoom: 15)));
+        setState(() {
+          _searchResult = result;
+        });
+      }
+    }
+  }
 }
 
+class RouteTypeWidget extends StatelessWidget {
+  final RouteType routeType;
+
+  const RouteTypeWidget({Key? key, required this.routeType}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xff005CB5);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (routeType == RouteType.start)
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: color, width: 2)),
+          )
+        else if (routeType == RouteType.end)
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.red, width: 2)),
+              ),
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.red, width: 2)),
+              ),
+            ],
+          )
+        else
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: color, width: 2)),
+              ),
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: color, width: 2)),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+enum RouteType { start, end, stop }
+
+class RoutePoint {
+  QueryResult? locationPoint;
+  RouteType routeType;
+
+  RoutePoint({this.locationPoint, required this.routeType});
+}
