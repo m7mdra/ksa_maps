@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 class ClickableSearchWidget extends StatelessWidget {
   final VoidCallback? onTap;
   final String? text;
+  final Widget? prefixIcon;
 
-  const ClickableSearchWidget({Key? key, this.onTap, this.text})
+
+  const ClickableSearchWidget({Key? key, this.onTap, this.text,this.prefixIcon})
       : super(key: key);
 
   @override
@@ -16,9 +18,9 @@ class ClickableSearchWidget extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Row(children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.0),
-                child: Icon(Icons.search, color: Colors.grey),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: prefixIcon ?? const Icon(Icons.search, color: Colors.grey),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
