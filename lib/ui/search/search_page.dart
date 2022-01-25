@@ -164,9 +164,13 @@ class _SearchPageState extends State<SearchPage> {
     return Card(
         margin: const EdgeInsets.all(8),
         child: Row(children: [
-          const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: BackButton(color: Colors.grey)),
+          Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Icon(Icons.arrow_back))),
           Expanded(
             child: TextField(
               controller: _textEditingController,

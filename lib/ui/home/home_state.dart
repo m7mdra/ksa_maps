@@ -11,6 +11,11 @@ class NavigationRoute extends HomeState {
   final List<RoutePoint> initRoutes;
 
   NavigationRoute(this.initRoutes);
+
+  @override
+  String toString() {
+    return 'NavigationRoute{initRoutes: $initRoutes}';
+  }
 }
 
 class NavigationSettings extends HomeState {}
@@ -24,15 +29,16 @@ class ShowSearchResultAndLocationOnMap extends HomeState {
 }
 
 class ShowRouteStartPointLocation extends HomeState {
-  final List<RoutePoint> route;
+  final QueryResult result;
 
-  ShowRouteStartPointLocation(this.route);
+
+  ShowRouteStartPointLocation(this.result);
 }
 
 class ShowRouteEndPointLocation extends HomeState {
-  final List<RoutePoint> route;
+  final List<RoutePoint> routes;
 
-  ShowRouteEndPointLocation(this.route);
+  ShowRouteEndPointLocation(this.routes);
 }
 
 class ClearAllOnMap extends HomeState {}

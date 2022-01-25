@@ -20,6 +20,7 @@ import 'package:ksa_maps/ui/widget/route_type.dart';
 import 'package:ksa_maps/ui/widget/search_widget.dart';
 import 'package:location/location.dart';
 import 'package:maplibre_gl/mapbox_gl.dart';
+import 'package:ksa_maps/data/model/extension_on_query_result.dart';
 
 const kPoiLayers = ['pois1', 'pois2', 'pois3', 'pois4', 'pois5'];
 
@@ -116,12 +117,47 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  _blocListener(context, HomeState state) {
+  _blocListener(context, HomeState state) async {
     if (state is ShowSearchResultAndLocationOnMap) {
       animateCameraToResultLocation(state.result);
     }
+    if (state is ShowRouteStartPointLocation) {
+      var coordinates = state.result.coordinates();
+      await _mapController?.addSymbol(SymbolOptions(
+          geometry: coordinates, iconImage: "marker", iconSize: 3.5));
+      await _mapController
+          ?.animateCamera(CameraUpdate.newLatLngZoom(coordinates, 12));
+    }
+    if (state is ShowRouteEndPointLocation) {
+      _showMapBoundsForRoute(state.routes);
+    }
     if (state is ClearAllOnMap) {
       _resetAll();
+    }
+  }
+
+  void _showMapBoundsForRoute(List<RoutePoint> routes) async {
+    var list = List<RoutePoint>.from(routes);
+
+    list.sort((first, second) {
+      return first.compareTo(second);
+    });
+    list.removeWhere((element) => element.locationPoint == null);
+
+    var first = list.first;
+    var last = list.last;
+    var firstLocation = last.locationPoint;
+    var lastLocation = first.locationPoint;
+    if (lastLocation != null && firstLocation != null) {
+      var padding = 100.0;
+      _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
+          LatLngBounds(
+              southwest: lastLocation.coordinates(),
+              northeast: firstLocation.coordinates()),
+          top: padding,
+          bottom: padding,
+          right: padding,
+          left: padding));
     }
   }
 
@@ -184,6 +220,7 @@ class _HomePageState extends State<HomePage> {
                       zoomInCallback: zoomInCallback,
                       zoomOutCallback: zoomOutCallback)),
               BlocBuilder(
+                buildWhen: _buildCondition,
                 builder: (context, state) {
                   if (state is NavigationSearch) {
                     return ClickableSearchWidget(
@@ -197,6 +234,18 @@ class _HomePageState extends State<HomePage> {
                         if (result != null) {
                           _homeBloc.add(OnStartPointSelect(result));
                         }
+                      },
+                      onAddStopPointTap: (point) async {
+                        var result = await _getQueryResult();
+                        if (result != null) {
+                          _homeBloc.add(OnStopPointSelect(result, point));
+                        }
+                      },
+                      onAddNewStopPointTap: () {
+                        _homeBloc.add(OnStopPointAdd());
+                      },
+                      onDeleteStopPointTap: (point) {
+                        _homeBloc.add(OnStopPointRemove(point));
                       },
                       onAddEndPointTap: () async {
                         var result = await _getQueryResult();
@@ -233,6 +282,14 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  bool _buildCondition(previousState, currentState) {
+    return currentState is NavigationSearch ||
+        currentState is NavigationRoute ||
+        currentState is NavigationFavorite ||
+        currentState is NavigationSettings ||
+        currentState is ShowSearchResultAndLocationOnMap;
   }
 
   /*void selectRoute(routesPoint, QueryResult result) {
@@ -464,9 +521,9 @@ class RouteSelectionWidget extends StatelessWidget {
   final List<RoutePoint> routesPoint;
   final VoidCallback? onAddStartPointTap;
   final VoidCallback? onAddEndPointTap;
-  final VoidCallback? onAddStopPointTap;
+  final Function(RoutePoint)? onAddStopPointTap;
   final VoidCallback? onAddNewStopPointTap;
-  final VoidCallback? onDeleteStopPointTap;
+  final Function(RoutePoint)? onDeleteStopPointTap;
 
   const RouteSelectionWidget(
       {Key? key,
@@ -501,7 +558,7 @@ class RouteSelectionWidget extends StatelessWidget {
 
                         break;
                       case RouteType.stop:
-                        onAddStopPointTap?.call();
+                        onAddStopPointTap?.call(point);
                         break;
                     }
                   },
@@ -511,7 +568,10 @@ class RouteSelectionWidget extends StatelessWidget {
                       Expanded(
                         child: Container(
                           margin: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(point.locationPoint?.name ?? ""),
+                          child: Text(
+                            point.locationPoint?.name ?? "",
+                            maxLines: 1,
+                          ),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                               color: Colors.grey.shade200,
@@ -520,7 +580,9 @@ class RouteSelectionWidget extends StatelessWidget {
                       ),
                       Visibility(
                         child: IconButton(
-                            onPressed: onDeleteStopPointTap,
+                            onPressed: () {
+                              onDeleteStopPointTap?.call(point);
+                            },
                             icon: const Icon(Icons.delete_forever)),
                         visible: point.routeType == RouteType.stop,
                         maintainSize: true,
@@ -543,7 +605,7 @@ class RouteSelectionWidget extends StatelessWidget {
                 icon: const Icon(Icons.add_circle_rounded)),
             const Spacer(),
             Text(
-                "${routesPoint.where((value) => value.routeType == RouteType.stop).length} Stops")
+                "${routesPoint.where((value) => value.routeType != RouteType.start).length} Stops")
           ]),
         )
       ]),

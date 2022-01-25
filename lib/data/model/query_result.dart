@@ -9,8 +9,8 @@ class QueryResultResponse {
 
 class QueryResult {
   QueryResult({
-    this.lat,
-    this.lng,
+   required this.lat,
+   required this.lng,
     this.name,
     this.fullAddress,
     this.streetName,
@@ -22,8 +22,8 @@ class QueryResult {
     this.type,
   });
 
-  final double? lat;
-  final double? lng;
+  final double lat;
+  final double lng;
   final String? name;
   final String? fullAddress;
   final String? streetName;

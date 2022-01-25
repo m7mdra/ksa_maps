@@ -20,6 +20,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
   void _resetRoutePoints() {
     _routesPoint.removeWhere((element) => element.routeType == RouteType.stop);
+    for (var element in _routesPoint) {
+      element.locationPoint = null;
+    }
   }
 
   HomeBloc() : super(HomeInitial()) {
@@ -31,11 +34,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<NavigationToRoute>((event, emit) {
       _currentScreen = CurrentScreen.route;
       emit(ClearAllOnMap());
+
       emit(NavigationRoute(_routesPoint));
     });
     on<NavigationToFavorite>((event, emit) {
       _currentScreen = CurrentScreen.favorite;
-
       emit(NavigationFavorite());
     });
     on<NavigationToSettings>((event, emit) {
@@ -49,26 +52,52 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       add(NavigationToSearch());
     });
     on<OnStartPointSelect>((event, emit) {
-      var queryResultLast = _routesPoint.last.locationPoint;
-      var queryResultFirst = _routesPoint.first.locationPoint;
       _routesPoint.first.locationPoint = event.result;
-      if (queryResultLast != null && queryResultFirst != null) {
-        print("do request");
-      } else {
-        emit(ShowRouteStartPointLocation(_routesPoint));
+      emit(ShowRouteStartPointLocation(event.result));
+      emit(NavigationRoute(_routesPoint));
+
+      if (_shouldDoSearchRoute()) {
+        print("should do request");
       }
+    });
+    on<OnStopPointRemove>((event, emit) {
+      _routesPoint.removeWhere((element) => element.id == event.point.id);
+      emit(ShowRouteEndPointLocation(_routesPoint));
+      emit(NavigationRoute(_routesPoint));
+      if (_shouldDoSearchRoute()) {
+        print("should do request");
+      }
+    });
+    on<OnStopPointSelect>((event, emit) {
+      var routePointWithId =
+          _routesPoint.firstWhere((element) => element.id == event.point.id);
+      routePointWithId.locationPoint = event.result;
+      emit(ShowRouteEndPointLocation(_routesPoint));
+      emit(NavigationRoute(_routesPoint));
+      if (_shouldDoSearchRoute()) {
+        print("should do request");
+      }
+    });
+    on<OnStopPointAdd>((event, emit) {
+      _routesPoint.insert(1, RoutePoint(routeType: RouteType.stop));
+      emit(NavigationRoute(_routesPoint));
     });
     on<OnEndPointSelect>((event, emit) {
-      var queryResultLast = _routesPoint.last.locationPoint;
-      var queryResultFirst = _routesPoint.first.locationPoint;
       _routesPoint.last.locationPoint = event.result;
-      emit(ShowRouteStartPointLocation(_routesPoint));
-      if (queryResultLast != null && queryResultFirst != null) {
-        print("do request");
-      } else {
-        emit(ShowRouteEndPointLocation(_routesPoint));
+      emit(ShowRouteEndPointLocation(_routesPoint));
+      emit(NavigationRoute(_routesPoint));
+
+      if (_shouldDoSearchRoute()) {
+        print("should do request");
       }
     });
+  }
+
+  bool _shouldDoSearchRoute() {
+    return _routesPoint
+            .takeWhile((value) => value.locationPoint != null)
+            .length >=
+        2;
   }
 }
 

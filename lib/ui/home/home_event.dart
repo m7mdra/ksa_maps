@@ -5,8 +5,7 @@ abstract class HomeEvent {}
 
 class NavigationToSearch extends HomeEvent {}
 
-class NavigationToRoute extends HomeEvent {
-}
+class NavigationToRoute extends HomeEvent {}
 
 class NavigationToFavorite extends HomeEvent {}
 
@@ -30,7 +29,19 @@ class OnEndPointSelect extends HomeEvent {
   final QueryResult result;
 
   OnEndPointSelect(this.result);
-
 }
 
 class OnStopPointAdd extends HomeEvent {}
+
+class OnStopPointSelect extends HomeEvent {
+  final QueryResult result;
+  final RoutePoint point;
+
+  OnStopPointSelect(this.result, this.point);
+}
+
+class OnStopPointRemove extends HomeEvent {
+  final RoutePoint point;
+
+  OnStopPointRemove(this.point);
+}
