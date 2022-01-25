@@ -24,7 +24,9 @@ class MapDataClient implements MapDataRepository {
           "lang": "en",
           "bounds": bounds.join(","),
           "center": center.join(","),
-          "ser": 1
+          "ser": 1,
+          "key": kAccessKey
+
         },
       );
       if (response.data is Map) {
@@ -49,7 +51,8 @@ class MapDataClient implements MapDataRepository {
         "lang": "en",
         "bounds": bounds.join(","),
         "center": center.join(","),
-        "ser": 1
+        "ser": 1,
+        "key": kAccessKey
       });
       if (response.data is Map) {
         return QueryResultResponse.fromJson([]);

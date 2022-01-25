@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 import 'package:ksa_maps/data/data.dart';
-import 'package:ksa_maps/ui/home/route.dart';
-import 'package:ksa_maps/ui/search/bloc/geo_search_bloc.dart';
-import 'package:maplibre_gl/mapbox_gl.dart';
+import 'package:ksa_maps/di/dependency_provider.dart';
+import 'package:ksa_maps/ui/home/bloc/home/route.dart';
+import 'package:ksa_maps/ui/home/bloc/route/route_bloc.dart';
+
 import 'package:meta/meta.dart';
 
 part 'home_event.dart';
@@ -12,6 +13,7 @@ part 'home_event.dart';
 part 'home_state.dart';
 
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
+  final RouteBloc _routeBloc;
   CurrentScreen _currentScreen = CurrentScreen.search;
   final _routesPoint = <RoutePoint>[
     RoutePoint(routeType: RouteType.start),
@@ -25,16 +27,17 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  HomeBloc() : super(HomeInitial()) {
+  HomeBloc(this._routeBloc) : super(HomeInitial()) {
     on<NavigationToSearch>((event, emit) {
       _currentScreen = CurrentScreen.search;
+      _resetRoutePoints();
       emit(ClearAllOnMap());
       emit(NavigationSearch());
     });
     on<NavigationToRoute>((event, emit) {
       _currentScreen = CurrentScreen.route;
+      _resetRoutePoints();
       emit(ClearAllOnMap());
-
       emit(NavigationRoute(_routesPoint));
     });
     on<NavigationToFavorite>((event, emit) {
@@ -49,7 +52,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       emit(ShowSearchResultAndLocationOnMap(event.result));
     });
     on<OnBackPress>((event, emit) {
-      add(NavigationToSearch());
+      if(_currentScreen==CurrentScreen.route){
+       add(NavigationToRoute());
+      }else {
+        add(NavigationToSearch());
+      }
     });
     on<OnStartPointSelect>((event, emit) {
       _routesPoint.first.locationPoint = event.result;
@@ -57,15 +64,16 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       emit(NavigationRoute(_routesPoint));
 
       if (_shouldDoSearchRoute()) {
-        print("should do request");
+        _searchForRoutes();
       }
     });
-    on<OnStopPointRemove>((event, emit) {
-      _routesPoint.removeWhere((element) => element.id == event.point.id);
+    on<OnEndPointSelect>((event, emit) {
+      _routesPoint.last.locationPoint = event.result;
       emit(ShowRouteEndPointLocation(_routesPoint));
       emit(NavigationRoute(_routesPoint));
+
       if (_shouldDoSearchRoute()) {
-        print("should do request");
+        _searchForRoutes();
       }
     });
     on<OnStopPointSelect>((event, emit) {
@@ -75,29 +83,45 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       emit(ShowRouteEndPointLocation(_routesPoint));
       emit(NavigationRoute(_routesPoint));
       if (_shouldDoSearchRoute()) {
-        print("should do request");
+        _searchForRoutes();
       }
     });
+    on<OnStopPointRemove>((event, emit) {
+      _routesPoint.removeWhere((element) => element.id == event.point.id);
+      emit(ShowRouteEndPointLocation(_routesPoint));
+      emit(NavigationRoute(_routesPoint));
+      if (_shouldDoSearchRoute()) {
+        _searchForRoutes();
+      }
+    });
+
     on<OnStopPointAdd>((event, emit) {
       _routesPoint.insert(1, RoutePoint(routeType: RouteType.stop));
       emit(NavigationRoute(_routesPoint));
     });
-    on<OnEndPointSelect>((event, emit) {
-      _routesPoint.last.locationPoint = event.result;
-      emit(ShowRouteEndPointLocation(_routesPoint));
-      emit(NavigationRoute(_routesPoint));
-
-      if (_shouldDoSearchRoute()) {
-        print("should do request");
-      }
-    });
   }
 
   bool _shouldDoSearchRoute() {
-    return _routesPoint
-            .takeWhile((value) => value.locationPoint != null)
-            .length >=
-        2;
+    var routes = List.from(_routesPoint);
+    routes.retainWhere((value) => value.locationPoint != null);
+    return routes.length > 1;
+  }
+
+  @override
+  void onTransition(Transition<HomeEvent, HomeState> transition) {
+    // TODO: implement onTransition
+    super.onTransition(transition);
+    print(transition);
+  }
+
+  void _searchForRoutes() {
+    emit(ShowRouteSearchContent());
+    var coordinates = _routesPoint
+        .map((e) => e.locationPoint?.coordinates())
+        .map((e) => "${e?.longitude},${e?.latitude}")
+        .toList();
+
+    _routeBloc.add(SearchForRoutes(coordinates.join(";")));
   }
 }
 

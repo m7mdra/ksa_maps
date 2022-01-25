@@ -12,10 +12,6 @@ class NavigationRoute extends HomeState {
 
   NavigationRoute(this.initRoutes);
 
-  @override
-  String toString() {
-    return 'NavigationRoute{initRoutes: $initRoutes}';
-  }
 }
 
 class NavigationSettings extends HomeState {}
@@ -42,3 +38,4 @@ class ShowRouteEndPointLocation extends HomeState {
 }
 
 class ClearAllOnMap extends HomeState {}
+class ShowRouteSearchContent extends HomeState{}

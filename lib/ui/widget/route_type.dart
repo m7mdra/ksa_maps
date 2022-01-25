@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ksa_maps/data/model/query_result.dart';
-import 'package:ksa_maps/ui/home/route.dart';
+import 'package:ksa_maps/ui/home/bloc/home/route.dart';
 
 class RouteTypeWidget extends StatelessWidget {
   final RouteType routeType;

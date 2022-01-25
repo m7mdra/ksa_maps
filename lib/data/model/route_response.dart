@@ -35,9 +35,9 @@ class Routes {
   late final String geometry;
   late final List<Legs> legs;
   late final String weightName;
-  late final double weight;
-  late final double duration;
-  late final double distance;
+  late final num weight;
+  late final num duration;
+  late final num distance;
 
   Routes.fromJson(Map<String, dynamic> json){
     geometry = json['geometry'];
@@ -70,9 +70,9 @@ class Legs {
   });
   late final List<Steps> steps;
   late final String summary;
-  late final double weight;
-  late final double duration;
-  late final double distance;
+  late final num weight;
+  late final num duration;
+  late final num distance;
 
   Legs.fromJson(Map<String, dynamic> json){
     steps = List.from(json['steps']).map((e)=>Steps.fromJson(e)).toList();
@@ -112,9 +112,9 @@ class Steps {
   late final String drivingSide;
   late final String name;
   late final List<Intersections> intersections;
-  late final int? weight;
-  late final int? duration;
-  late final double? distance;
+  late final num? weight;
+  late final num? duration;
+  late final num? distance;
   late final String instruction;
 
   Steps.fromJson(Map<String, dynamic> json){
@@ -178,18 +178,15 @@ class Maneuver {
 class Intersections {
   Intersections({
     required this.out,
-    required this.entry,
     required this.bearings,
     required this.location,
   });
-  late final int out;
-  late final List<bool> entry;
+  late final int? out;
   late final List<int> bearings;
   late final List<double> location;
 
   Intersections.fromJson(Map<String, dynamic> json){
     out = json['out'];
-    entry = json['entry'];
     bearings = List.castFrom<dynamic, int>(json['bearings']);
     location = List.castFrom<dynamic, double>(json['location']);
   }
@@ -197,7 +194,6 @@ class Intersections {
   Map<String, dynamic> toJson() {
     final _data = <String, dynamic>{};
     _data['out'] = out;
-    _data['entry'] = entry;
     _data['bearings'] = bearings;
     _data['location'] = location;
     return _data;
@@ -212,7 +208,7 @@ class Waypoints {
     required this.location,
   });
   late final String hint;
-  late final double distance;
+  late final num distance;
   late final String name;
   late final List<double> location;
 

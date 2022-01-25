@@ -2,14 +2,15 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ksa_maps/data/data.dart';
 import 'package:ksa_maps/data/ksamaps_resources.dart';
+import 'package:ksa_maps/data/model/route_response.dart';
 import 'package:ksa_maps/di/dependency_provider.dart';
-import 'package:ksa_maps/ui/home/home_bloc.dart';
-import 'package:ksa_maps/ui/home/route.dart';
+import 'package:ksa_maps/polyline.dart';
+import 'package:ksa_maps/ui/home/bloc/home/home_bloc.dart';
+import 'package:ksa_maps/ui/home/bloc/route/route_bloc.dart';
 import 'package:ksa_maps/ui/search/search_page.dart';
 import 'package:ksa_maps/ui/widget/360_button.dart';
 import 'package:ksa_maps/ui/widget/layers_button.dart';
@@ -20,7 +21,8 @@ import 'package:ksa_maps/ui/widget/route_type.dart';
 import 'package:ksa_maps/ui/widget/search_widget.dart';
 import 'package:location/location.dart';
 import 'package:maplibre_gl/mapbox_gl.dart';
-import 'package:ksa_maps/data/model/extension_on_query_result.dart';
+
+import 'bloc/home/route.dart';
 
 const kPoiLayers = ['pois1', 'pois2', 'pois3', 'pois4', 'pois5'];
 
@@ -33,6 +35,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late HomeBloc _homeBloc;
+  late RouteBloc _routeBloc;
   MaplibreMapController? _mapController;
   final GlobalKey<ScaffoldState> _key = GlobalKey();
   var _currentSelection = 0;
@@ -48,7 +51,9 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _homeBloc = HomeBloc();
+    _routeBloc = RouteBloc(D.provide());
+
+    _homeBloc = HomeBloc(_routeBloc);
     _homeBloc.add(NavigationToSearch());
   }
 
@@ -128,6 +133,7 @@ class _HomePageState extends State<HomePage> {
       await _mapController
           ?.animateCamera(CameraUpdate.newLatLngZoom(coordinates, 12));
     }
+
     if (state is ShowRouteEndPointLocation) {
       _showMapBoundsForRoute(state.routes);
     }
@@ -143,7 +149,9 @@ class _HomePageState extends State<HomePage> {
       return first.compareTo(second);
     });
     list.removeWhere((element) => element.locationPoint == null);
-
+    if (list.isEmpty) {
+      return;
+    }
     var first = list.first;
     var last = list.last;
     var firstLocation = last.locationPoint;
@@ -229,30 +237,11 @@ class _HomePageState extends State<HomePage> {
                   if (state is NavigationRoute) {
                     return RouteSelectionWidget(
                       routesPoint: state.initRoutes,
-                      onAddStartPointTap: () async {
-                        var result = await _getQueryResult();
-                        if (result != null) {
-                          _homeBloc.add(OnStartPointSelect(result));
-                        }
-                      },
-                      onAddStopPointTap: (point) async {
-                        var result = await _getQueryResult();
-                        if (result != null) {
-                          _homeBloc.add(OnStopPointSelect(result, point));
-                        }
-                      },
-                      onAddNewStopPointTap: () {
-                        _homeBloc.add(OnStopPointAdd());
-                      },
-                      onDeleteStopPointTap: (point) {
-                        _homeBloc.add(OnStopPointRemove(point));
-                      },
-                      onAddEndPointTap: () async {
-                        var result = await _getQueryResult();
-                        if (result != null) {
-                          _homeBloc.add(OnEndPointSelect(result));
-                        }
-                      },
+                      onAddStartPointTap: _onAddStartPointTap,
+                      onAddStopPointTap: _onAddStopPointTap,
+                      onAddNewStopPointTap: _onAddNewStopPointTap,
+                      onDeleteStopPointTap: _onDeleteStopPointTap,
+                      onAddEndPointTap: _onAddEndPointTap,
                     );
                   }
                   if (state is NavigationFavorite) {
@@ -273,6 +262,23 @@ class _HomePageState extends State<HomePage> {
                       ),
                     );
                   }
+                  if (state is ShowRouteSearchContent) {
+                    return BlocProvider.value(
+                        value: _routeBloc,
+                        child: RoutesViewWidget(
+                          onBackTap: () {},
+                          itemClickCallback: (route) {
+                            var result = PolylineCodec.decode(route.geometry);
+                            var mapResult = result
+                                .map((e) => LatLng(
+                                    e.first.toDouble(), e.last.toDouble()))
+                                .toList();
+
+                            _mapController?.addLine(LineOptions(
+                                geometry: mapResult, lineColor: "red"));
+                          },
+                        ));
+                  }
                   return Container();
                 },
                 bloc: _homeBloc,
@@ -284,60 +290,44 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _onAddEndPointTap() async {
+    var result = await _getQueryResult();
+    if (result != null) {
+      _homeBloc.add(OnEndPointSelect(result));
+    }
+  }
+
+  _onDeleteStopPointTap(point) {
+    _homeBloc.add(OnStopPointRemove(point));
+  }
+
+  void _onAddNewStopPointTap() {
+    _homeBloc.add(OnStopPointAdd());
+  }
+
+  _onAddStopPointTap(point) async {
+    var result = await _getQueryResult();
+    if (result != null) {
+      _homeBloc.add(OnStopPointSelect(result, point));
+    }
+  }
+
+  void _onAddStartPointTap() async {
+    var result = await _getQueryResult();
+    if (result != null) {
+      _homeBloc.add(OnStartPointSelect(result));
+    }
+  }
+
   bool _buildCondition(previousState, currentState) {
     return currentState is NavigationSearch ||
         currentState is NavigationRoute ||
         currentState is NavigationFavorite ||
         currentState is NavigationSettings ||
-        currentState is ShowSearchResultAndLocationOnMap;
+        currentState is ShowSearchResultAndLocationOnMap ||
+        currentState is ShowRouteSearchContent;
   }
 
-  /*void selectRoute(routesPoint, QueryResult result) {
-    {
-                                         setState(() {
-                                           routesPoint.locationPoint = result;
-                                         });
-
-                                         var queryResultLast =
-                                             _routesPoint.last.locationPoint;
-                                         var queryResultFirst =
-                                             _routesPoint.first.locationPoint;
-                                         if (queryResultLast != null &&
-                                             queryResultFirst != null) {
-                                           LatLngBounds latLngBounds;
-                                           if (queryResultLast.lat! <=
-                                               queryResultFirst.lat!) {
-                                             latLngBounds = LatLngBounds(
-                                                 southwest:
-                                                     queryResultLast.coordinates(),
-                                                 northeast: queryResultFirst
-                                                     .coordinates());
-                                           } else {
-                                             latLngBounds = LatLngBounds(
-                                                 northeast:
-                                                     queryResultLast.coordinates(),
-                                                 southwest: queryResultFirst
-                                                     .coordinates());
-                                           }
-                                           _mapController?.animateCamera(
-                                               CameraUpdate.newLatLngBounds(
-                                                   latLngBounds,
-                                                   bottom: 100,
-                                                   top: 100,
-                                                   right: 100,
-                                                   left: 100));
-                                           var coordinates = _routesPoint
-                                               .map((e) =>
-                                                   e.locationPoint?.coordinates())
-                                               .map((e) =>
-                                                   "${e?.longitude},${e?.latitude}")
-                                               .toList();
-                                         } else {
-                                           print("should not search");
-                                         }
-                                       }
-  }
-*/
   void zoomOutCallback() {
     _mapController?.animateCamera(CameraUpdate.zoomOut());
   }
@@ -514,6 +504,99 @@ class _HomePageState extends State<HomePage> {
         result.toJson());
     await _mapController?.animateCamera(CameraUpdate.newCameraPosition(
         CameraPosition(target: result.coordinates(), zoom: 15)));
+  }
+}
+
+class RoutesViewWidget extends StatelessWidget {
+  final VoidCallback? onBackTap;
+  final Function(Routes)? itemClickCallback;
+
+  const RoutesViewWidget({Key? key, this.onBackTap, this.itemClickCallback})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                    onPressed: onBackTap, icon: const Icon(Icons.arrow_back)),
+                const Text(
+                  "Routes",
+                  style: TextStyle(fontSize: 20),
+                ),
+              ],
+            ),
+            BlocBuilder(
+                builder: (context, state) {
+                  if (state is RouteLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (state is RouteSuccess) {
+                    var routes = state.response.routes;
+                    return ListView.separated(
+                      separatorBuilder: (context, index) {
+                        return const Divider();
+                      },
+                      shrinkWrap: true,
+                      itemBuilder: (context, index) {
+                        var route = routes[index];
+                        return RouteListItem(
+                          route: route,
+                          onTap: itemClickCallback,
+                        );
+                      },
+                      itemCount: routes.length,
+                    );
+                  }
+                  return Container();
+                },
+                bloc: context.read<RouteBloc>()),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class RouteListItem extends StatelessWidget {
+  final Function(Routes)? onTap;
+
+  const RouteListItem({
+    Key? key,
+    this.onTap,
+    required this.route,
+  }) : super(key: key);
+
+  final Routes route;
+
+  @override
+  Widget build(BuildContext context) {
+    var duration = Duration(seconds: route.duration.toInt());
+    return ListTile(
+      onTap: () {
+        onTap?.call(route);
+      },
+      leading: Column(
+        children: [
+          Text(
+            "${duration.inHours}:${duration.inMinutes}",
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const Text(
+            "Mins",
+          ),
+        ],
+      ),
+      trailing: Text("${(route.distance / 1000).toStringAsFixed(1)} KM"),
+      title: Text(route.legs.map((e) => e.summary).join(""), maxLines: 1),
+    );
   }
 }
 

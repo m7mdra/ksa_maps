@@ -34,7 +34,7 @@ class D {
         responseHeader: true,
       ));
     }
-    client.interceptors.add(KeyInterceptor());
+    // client.interceptors.add(KeyInterceptor());
     _registrar.registerSingleton(client);
     _registrar.registerSingleton<MapDataRepository>(MapDataClient(client));
   }
