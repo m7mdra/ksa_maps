@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -122,7 +123,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  _blocListener(context, HomeState state) async {
+  _homeBlocListener(context, HomeState state) async {
     if (state is ShowSearchResultAndLocationOnMap) {
       animateCameraToResultLocation(state.result);
     }
@@ -188,110 +189,153 @@ class _HomePageState extends State<HomePage> {
       ),
       key: _key,
       body: BlocListener(
-        listener: _blocListener,
-        bloc: _homeBloc,
-        child: SafeArea(
-          child: Stack(
-            children: [
-              MaplibreMap(
-                  attributionButtonMargins: const Point(-1000, -1000),
-                  // logoViewMargins: const Point(-1000, -1000),
-                  myLocationTrackingMode: MyLocationTrackingMode.None,
-                  myLocationEnabled: false,
-                  annotationOrder: const [
-                    AnnotationType.symbol,
-                    AnnotationType.line,
-                    AnnotationType.circle,
-                    AnnotationType.fill,
-                  ],
-                  onStyleLoadedCallback: _onStyleLoaded,
-                  minMaxZoomPreference: const MinMaxZoomPreference(4.5, 19),
-                  myLocationRenderMode: MyLocationRenderMode.NORMAL,
-                  zoomGesturesEnabled: true,
-                  styleString: KsaMapsResources.kStyleTilesUrl,
-                  compassEnabled: true,
-                  initialCameraPosition: const CameraPosition(
-                      target: LatLng(24.774265, 46.738586), zoom: 5),
-                  onMapCreated: _onMapCreated),
-              Align(
-                  child: LayersButton(onTap: _showFeatureAndLayerBottomSheet),
-                  alignment: const Alignment(1, -0.0)),
-              Align(
-                  child: Button360View(onTap: _onChangeTiltedTap),
-                  alignment: const Alignment(1, 0.75)),
-              Align(
-                  child: LocationButton(onTap: _locateUser),
-                  alignment: const Alignment(1, 1)),
-              Align(
-                  alignment: const Alignment(1, 0.45),
-                  child: MapZoomControls(
-                      zoomInCallback: zoomInCallback,
-                      zoomOutCallback: zoomOutCallback)),
-              BlocBuilder(
-                buildWhen: _buildCondition,
-                builder: (context, state) {
-                  if (state is NavigationSearch) {
-                    return ClickableSearchWidget(
-                        text: null, onTap: _onSearchBarTap);
-                  }
-                  if (state is NavigationRoute) {
-                    return RouteSelectionWidget(
-                      routesPoint: state.initRoutes,
-                      onAddStartPointTap: _onAddStartPointTap,
-                      onAddStopPointTap: _onAddStopPointTap,
-                      onAddNewStopPointTap: _onAddNewStopPointTap,
-                      onDeleteStopPointTap: _onDeleteStopPointTap,
-                      onAddEndPointTap: _onAddEndPointTap,
-                    );
-                  }
-                  if (state is NavigationFavorite) {
-                    return Container(color: Colors.red);
-                  }
-                  if (state is NavigationSettings) {
-                    return Container(color: Colors.blue);
-                  }
-                  if (state is ShowSearchResultAndLocationOnMap) {
-                    return ClickableSearchWidget(
-                      text: state.result.name ?? "",
-                      onTap: _onSearchBarTap,
-                      prefixIcon: GestureDetector(
-                        onTap: () {
-                          _homeBloc.add(OnBackPress());
-                        },
-                        child: const Icon(Icons.arrow_back),
-                      ),
-                    );
-                  }
-                  if (state is ShowRouteSearchContent) {
-                    return BlocProvider.value(
-                        value: _routeBloc,
-                        child: RoutesViewWidget(
-                          onBackTap: () {},
-                          itemClickCallback: (route) {
-                            var result = PolylineCodec.decode(route.geometry);
-                            var mapResult = result
-                                .map((e) => LatLng(
-                                    e.first.toDouble(), e.last.toDouble()))
-                                .toList();
-
-                            _mapController?.addLine(LineOptions(
-                                geometry: mapResult, lineColor: "red"));
+        bloc: _routeBloc,
+        listener: _routeBlocListener,
+        child: BlocListener(
+          listener: _homeBlocListener,
+          bloc: _homeBloc,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                MaplibreMap(
+                    attributionButtonMargins: const Point(-1000, -1000),
+                    // logoViewMargins: const Point(-1000, -1000),
+                    myLocationTrackingMode: MyLocationTrackingMode.None,
+                    myLocationEnabled: false,
+                    annotationOrder: const [
+                      AnnotationType.symbol,
+                      AnnotationType.line,
+                      AnnotationType.circle,
+                      AnnotationType.fill,
+                    ],
+                    onStyleLoadedCallback: _onStyleLoaded,
+                    minMaxZoomPreference: const MinMaxZoomPreference(4.5, 19),
+                    myLocationRenderMode: MyLocationRenderMode.NORMAL,
+                    zoomGesturesEnabled: true,
+                    styleString: KsaMapsResources.kStyleTilesUrl,
+                    compassEnabled: true,
+                    initialCameraPosition: const CameraPosition(
+                        target: LatLng(24.774265, 46.738586), zoom: 5),
+                    onMapCreated: _onMapCreated),
+                Align(
+                    child: LayersButton(onTap: _showFeatureAndLayerBottomSheet),
+                    alignment: const Alignment(1, -0.0)),
+                Align(
+                    child: Button360View(onTap: _onChangeTiltedTap),
+                    alignment: const Alignment(1, 0.75)),
+                Align(
+                    child: LocationButton(onTap: _locateUser),
+                    alignment: const Alignment(1, 1)),
+                Align(
+                    alignment: const Alignment(1, 0.45),
+                    child: MapZoomControls(
+                        zoomInCallback: zoomInCallback,
+                        zoomOutCallback: zoomOutCallback)),
+                BlocBuilder(
+                  buildWhen: _buildCondition,
+                  builder: (context, state) {
+                    if (state is NavigationSearch) {
+                      return ClickableSearchWidget(
+                          text: null, onTap: _onSearchBarTap);
+                    }
+                    if (state is NavigationRoute) {
+                      return RouteSelectionWidget(
+                        routesPoint: state.initRoutes,
+                        onAddStartPointTap: _onAddStartPointTap,
+                        onAddStopPointTap: _onAddStopPointTap,
+                        onAddNewStopPointTap: _onAddNewStopPointTap,
+                        onDeleteStopPointTap: _onDeleteStopPointTap,
+                        onAddEndPointTap: _onAddEndPointTap,
+                      );
+                    }
+                    if (state is NavigationFavorite) {
+                      return Container(color: Colors.red);
+                    }
+                    if (state is NavigationSettings) {
+                      return Container(color: Colors.blue);
+                    }
+                    if (state is ShowSearchResultAndLocationOnMap) {
+                      return ClickableSearchWidget(
+                        text: state.result.name ?? "",
+                        onTap: _onSearchBarTap,
+                        prefixIcon: GestureDetector(
+                          onTap: () {
+                            _homeBloc.add(OnBackPress());
                           },
-                        ));
-                  }
-                  return Container();
-                },
-                bloc: _homeBloc,
-              ),
-            ],
+                          child: const Icon(Icons.arrow_back),
+                        ),
+                      );
+                    }
+                    if (state is ShowRouteSearchContent) {
+                      return BlocProvider.value(
+                          value: _routeBloc,
+                          child: RoutesViewWidget(
+                            onBackTap: () {
+                              _homeBloc.add(OnBackPress());
+                            },
+                            itemClickCallback: (route) {
+                              var result = PolylineCodec.decode(route.geometry);
+                              var mapResult = result
+                                  .map((e) => LatLng(
+                                      e.first.toDouble(), e.last.toDouble()))
+                                  .toList();
+
+                              _mapController?.addLine(LineOptions(
+                                  geometry: mapResult, lineColor: "red"));
+                            },
+                          ));
+                    }
+                    return Container();
+                  },
+                  bloc: _homeBloc,
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  void _routeBlocListener(BuildContext context, RouteState state) async {
+    if (state is RouteSuccess) {
+      state.response.routes.map((e) => e.geometry).forEach((element) async {
+        var decode = PolylineCodec.decode(element);
+        var latLngList = decode
+            .map((e) => LatLng(e.first.toDouble(), e.last.toDouble()))
+            .toList();
+      var list = List.of(latLngList);
+        list.sort((first, second) {
+          return first.latitude.compareTo(second.latitude);
+        });
+        await _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
+            LatLngBounds(
+                southwest: list.first, northeast: list.last),
+            top: 200,
+            bottom: 200,
+            left: 200,
+            right: 200));
+        await _mapController
+            ?.addLine(LineOptions(geometry: latLngList, lineColor: Colors.grey.toHexStringRGB(),lineWidth: 4,lineOpacity: 0.5));
+      });
+    }
+  }
+
   void _onAddEndPointTap() async {
-    var result = await _getQueryResult();
+    // var result = await _getQueryResult();
+    var result = QueryResult.fromJson(jsonDecode('''{
+    "lat": 26.40578934729014,
+    "lng": 49.849378135323036,
+    "name": "King Fahad Bin Abdulaziz Road",
+    "full_address": "Dammam",
+    "street_name": "King Fahad Bin Abdulaziz Road",
+    "district": "",
+    "province": "Eastern Province",
+    "city": "Dammam",
+    "postal_code": "",
+    "pages": "15",
+    "type": 2
+  }'''));
     if (result != null) {
       _homeBloc.add(OnEndPointSelect(result));
     }
@@ -313,7 +357,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onAddStartPointTap() async {
-    var result = await _getQueryResult();
+    // var result = await _getQueryResult();
+    var result = QueryResult.fromJson(jsonDecode('''{
+    "lat": 26.289322,
+    "lng": 50.214753,
+    "name": "Traffic Hi-Tech Company",
+    "full_address": "Al Khobar Al Shamalia, Al Khobar",
+    "street_name": "",
+    "district": "",
+    "province": "Eastern Province",
+    "city": "Al Khobar",
+    "postal_code": "",
+    "pages": "32",
+    "type": 3
+  }'''));
     if (result != null) {
       _homeBloc.add(OnStartPointSelect(result));
     }
