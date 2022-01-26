@@ -390,20 +390,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onAddEndPointTap() async {
-    // var result = await _getQueryResult();
-    var result = QueryResult.fromJson(jsonDecode('''{
-    "lat": 26.40578934729014,
-    "lng": 49.849378135323036,
-    "name": "King Fahad Bin Abdulaziz Road",
-    "full_address": "Dammam",
-    "street_name": "King Fahad Bin Abdulaziz Road",
-    "district": "",
-    "province": "Eastern Province",
-    "city": "Dammam",
-    "postal_code": "",
-    "pages": "15",
-    "type": 2
-  }'''));
+    var result = await _getQueryResult();
+
     if (result != null) {
       _homeBloc.add(OnEndPointSelect(result));
     }
@@ -425,20 +413,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onAddStartPointTap() async {
-    // var result = await _getQueryResult();
-    var result = QueryResult.fromJson(jsonDecode('''{
-    "lat": 26.289322,
-    "lng": 50.214753,
-    "name": "Traffic Hi-Tech Company",
-    "full_address": "Al Khobar Al Shamalia, Al Khobar",
-    "street_name": "",
-    "district": "",
-    "province": "Eastern Province",
-    "city": "Al Khobar",
-    "postal_code": "",
-    "pages": "32",
-    "type": 3
-  }'''));
+    var result = await _getQueryResult();
+
     if (result != null) {
       _homeBloc.add(OnStartPointSelect(result));
     }
