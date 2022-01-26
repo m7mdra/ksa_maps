@@ -18,7 +18,9 @@ import 'package:ksa_maps/ui/widget/layers_button.dart';
 import 'package:ksa_maps/ui/widget/location_button.dart';
 import 'package:ksa_maps/ui/widget/map_style_features.dart';
 import 'package:ksa_maps/ui/widget/map_zoom_controls.dart';
+import 'package:ksa_maps/ui/widget/route_planning_widget.dart';
 import 'package:ksa_maps/ui/widget/route_type.dart';
+import 'package:ksa_maps/ui/widget/route_view_widget.dart';
 import 'package:ksa_maps/ui/widget/search_widget.dart';
 import 'package:location/location.dart';
 import 'package:maplibre_gl/mapbox_gl.dart';
@@ -37,6 +39,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late HomeBloc _homeBloc;
   late RouteBloc _routeBloc;
+  Line? _selectedLineRoute;
+
   MaplibreMapController? _mapController;
   final GlobalKey<ScaffoldState> _key = GlobalKey();
   var _currentSelection = 0;
@@ -130,7 +134,7 @@ class _HomePageState extends State<HomePage> {
     if (state is ShowRouteStartPointLocation) {
       var coordinates = state.result.coordinates();
       await _mapController?.addSymbol(SymbolOptions(
-          geometry: coordinates, iconImage: "marker", iconSize: 3.5));
+          geometry: coordinates, iconImage: "start_point", iconSize: 3.5));
       await _mapController
           ?.animateCamera(CameraUpdate.newLatLngZoom(coordinates, 12));
     }
@@ -158,8 +162,30 @@ class _HomePageState extends State<HomePage> {
     var firstLocation = last.locationPoint;
     var lastLocation = first.locationPoint;
     if (lastLocation != null && firstLocation != null) {
+      await _mapController?.clearSymbols();
       var padding = 100.0;
-      _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
+
+      for (var element in list) {
+        var pointImageName = "";
+        switch (element.routeType) {
+          case RouteType.start:
+            pointImageName = "start_point";
+            break;
+          case RouteType.end:
+            pointImageName = "end_point";
+
+            break;
+          case RouteType.stop:
+            pointImageName = "stop_point";
+            break;
+        }
+        await _mapController?.addSymbol(SymbolOptions(
+            geometry: element.locationPoint?.coordinates(),
+            iconImage: pointImageName,
+            iconSize: 3.5));
+      }
+
+      await _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
           LatLngBounds(
               southwest: lastLocation.coordinates(),
               northeast: firstLocation.coordinates()),
@@ -239,13 +265,15 @@ class _HomePageState extends State<HomePage> {
                           text: null, onTap: _onSearchBarTap);
                     }
                     if (state is NavigationRoute) {
-                      return RouteSelectionWidget(
+                      return RoutePlanningWidget(
                         routesPoint: state.initRoutes,
                         onAddStartPointTap: _onAddStartPointTap,
                         onAddStopPointTap: _onAddStopPointTap,
                         onAddNewStopPointTap: _onAddNewStopPointTap,
                         onDeleteStopPointTap: _onDeleteStopPointTap,
                         onAddEndPointTap: _onAddEndPointTap,
+                        onSearchClick: _onSearchRouteClick,
+                        onClearClick: _onClearPointsClick,
                       );
                     }
                     if (state is NavigationFavorite) {
@@ -273,15 +301,22 @@ class _HomePageState extends State<HomePage> {
                             onBackTap: () {
                               _homeBloc.add(OnBackPress());
                             },
-                            itemClickCallback: (route) {
+                            itemClickCallback: (route) async {
+                              if (_selectedLineRoute != null) {
+                                _removeSelectedLine();
+                              }
                               var result = PolylineCodec.decode(route.geometry);
                               var mapResult = result
                                   .map((e) => LatLng(
                                       e.first.toDouble(), e.last.toDouble()))
                                   .toList();
 
-                              _mapController?.addLine(LineOptions(
-                                  geometry: mapResult, lineColor: "red"));
+                              _selectedLineRoute =
+                                  await _mapController?.addLine(LineOptions(
+                                      geometry: mapResult,
+                                      lineWidth: 5,
+                                      lineJoin: "round",
+                                      lineColor: Colors.blue.toHexStringRGB()));
                             },
                           ));
                     }
@@ -297,6 +332,14 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _onClearPointsClick() {
+    _homeBloc.add(ClearSelectedPoints());
+  }
+
+  void _onSearchRouteClick() {
+    _homeBloc.add(SubmitRouteSearch());
+  }
+
   void _routeBlocListener(BuildContext context, RouteState state) async {
     if (state is RouteSuccess) {
       state.response.routes.map((e) => e.geometry).forEach((element) async {
@@ -304,19 +347,22 @@ class _HomePageState extends State<HomePage> {
         var latLngList = decode
             .map((e) => LatLng(e.first.toDouble(), e.last.toDouble()))
             .toList();
-      var list = List.of(latLngList);
+        var list = List.of(latLngList);
         list.sort((first, second) {
           return first.latitude.compareTo(second.latitude);
         });
         await _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-            LatLngBounds(
-                southwest: list.first, northeast: list.last),
+            LatLngBounds(southwest: list.first, northeast: list.last),
             top: 200,
             bottom: 200,
             left: 200,
             right: 200));
-        await _mapController
-            ?.addLine(LineOptions(geometry: latLngList, lineColor: Colors.grey.toHexStringRGB(),lineWidth: 4,lineOpacity: 0.5));
+        await _mapController?.addLine(LineOptions(
+            geometry: latLngList,
+            lineColor: Colors.blueGrey.toHexStringRGB(),
+            lineWidth: 4,
+            lineJoin: "round",
+            lineOpacity: 0.5));
       });
     }
   }
@@ -394,8 +440,14 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onStyleLoaded() async {
-    await _mapController?.addImage("marker", await loadMarkerImage());
-
+    await _mapController?.addImage(
+        "marker", await loadMarkerImage("assets/image/marker.png"));
+    await _mapController?.addImage(
+        "start_point", await loadMarkerImage("assets/image/start_point.png"));
+    await _mapController?.addImage(
+        "end_point", await loadMarkerImage("assets/image/end_point.png"));
+    await _mapController?.addImage(
+        "stop_point", await loadMarkerImage("assets/image/stop_point.png"));
     await _mapController?.setMapLanguage("name_ar");
     await _mapController?.addSource(
       "satellite",
@@ -427,8 +479,8 @@ class _HomePageState extends State<HomePage> {
     _mapController?.animateCamera(CameraUpdate.tiltTo(newCameraTilt));
   }
 
-  Future<Uint8List> loadMarkerImage() async {
-    var byteData = await rootBundle.load("assets/image/marker.png");
+  Future<Uint8List> loadMarkerImage(String name) async {
+    var byteData = await rootBundle.load(name);
     return byteData.buffer.asUint8List();
   }
 
@@ -457,69 +509,85 @@ class _HomePageState extends State<HomePage> {
                 satelliteAdded: _satelliteAdded,
                 isTrafficEnabled: _trafficAdded,
                 onNormalSelected: () async {
-                  await _mapController?.removeLayer("satellite");
-                  setState(() {
-                    _satelliteAdded = false;
-                  });
+                  await _removeSatellite();
                 },
                 onSatelliteSelected: () async {
-                  await _mapController?.addLayer(
-                      "satellite", "satellite", const RasterLayerProperties(),
-                      belowLayerId: "land");
-                  setState(() {
-                    _satelliteAdded = true;
-                  });
+                  await _addSatellite();
                 },
                 onTrafficToggle: () async {
                   if (_trafficAdded) {
-                    _mapController?.removeLayer("traffic").then((_) {
-                      setState(() {
-                        _trafficAdded = false;
-                      });
-                    }).catchError((error) {});
+                    _removeTraffic();
                   } else {
-                    _mapController
-                        ?.addLayer(
-                            "traffic",
-                            "traffic",
-                            const LineLayerProperties(
-                              lineColor: [
-                                "interpolate",
-                                ["linear"],
-                                [
-                                  "number",
-                                  ["get", "traffic_level"]
-                                ],
-                                0,
-                                "gray",
-                                0.1,
-                                "orangered",
-                                0.3,
-                                "tomato",
-                                0.5,
-                                "goldenrod",
-                                0.7,
-                                "yellow",
-                                1,
-                                "limegreen"
-                              ],
-                              lineWidth: 2,
-                              lineCap: "round",
-                              lineJoin: "round",
-                            ),
-                            sourceLayer: "Traffic flow",
-                            belowLayerId: "stnw4_label")
-                        .then((_) {
-                      setState(() {
-                        _trafficAdded = true;
-                      });
-                    }).catchError((error) {});
+                    _addTraffic();
                   }
                 },
               );
             },
           );
         });
+  }
+
+  Future<void> _removeSatellite() async {
+    await _mapController?.removeLayer("satellite");
+    setState(() {
+      _satelliteAdded = false;
+    });
+  }
+
+  Future<void> _addSatellite() async {
+    await _mapController?.addLayer(
+        "satellite", "satellite", const RasterLayerProperties(),
+        belowLayerId: "land");
+    setState(() {
+      _satelliteAdded = true;
+    });
+  }
+
+  void _addTraffic() {
+    _mapController
+        ?.addLayer(
+            "traffic",
+            "traffic",
+            const LineLayerProperties(
+              lineColor: [
+                "interpolate",
+                ["linear"],
+                [
+                  "number",
+                  ["get", "traffic_level"]
+                ],
+                0,
+                "gray",
+                0.1,
+                "orangered",
+                0.3,
+                "tomato",
+                0.5,
+                "goldenrod",
+                0.7,
+                "yellow",
+                1,
+                "limegreen"
+              ],
+              lineWidth: 2,
+              lineCap: "round",
+              lineJoin: "round",
+            ),
+            sourceLayer: "Traffic flow",
+            belowLayerId: "stnw4_label")
+        .then((_) {
+      setState(() {
+        _trafficAdded = true;
+      });
+    });
+  }
+
+  void _removeTraffic() {
+    _mapController?.removeLayer("traffic").then((_) {
+      setState(() {
+        _trafficAdded = false;
+      });
+    });
   }
 
   Future<QueryResult?> _getQueryResult() async {
@@ -554,7 +622,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> animateCameraToResultLocation(QueryResult result) async {
-    await _mapController?.addImage("marker", await loadMarkerImage());
     await _mapController?.addSymbol(
         SymbolOptions(
             geometry: result.coordinates(), iconSize: 3.5, iconImage: "marker"),
@@ -562,193 +629,11 @@ class _HomePageState extends State<HomePage> {
     await _mapController?.animateCamera(CameraUpdate.newCameraPosition(
         CameraPosition(target: result.coordinates(), zoom: 15)));
   }
-}
 
-class RoutesViewWidget extends StatelessWidget {
-  final VoidCallback? onBackTap;
-  final Function(Routes)? itemClickCallback;
-
-  const RoutesViewWidget({Key? key, this.onBackTap, this.itemClickCallback})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                    onPressed: onBackTap, icon: const Icon(Icons.arrow_back)),
-                const Text(
-                  "Routes",
-                  style: TextStyle(fontSize: 20),
-                ),
-              ],
-            ),
-            BlocBuilder(
-                builder: (context, state) {
-                  if (state is RouteLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (state is RouteSuccess) {
-                    var routes = state.response.routes;
-                    return ListView.separated(
-                      separatorBuilder: (context, index) {
-                        return const Divider();
-                      },
-                      shrinkWrap: true,
-                      itemBuilder: (context, index) {
-                        var route = routes[index];
-                        return RouteListItem(
-                          route: route,
-                          onTap: itemClickCallback,
-                        );
-                      },
-                      itemCount: routes.length,
-                    );
-                  }
-                  return Container();
-                },
-                bloc: context.read<RouteBloc>()),
-          ],
-        ),
-      ),
-    );
+  void _removeSelectedLine() {
+    _mapController?.removeLine(_selectedLineRoute!);
   }
 }
 
-class RouteListItem extends StatelessWidget {
-  final Function(Routes)? onTap;
 
-  const RouteListItem({
-    Key? key,
-    this.onTap,
-    required this.route,
-  }) : super(key: key);
 
-  final Routes route;
-
-  @override
-  Widget build(BuildContext context) {
-    var duration = Duration(seconds: route.duration.toInt());
-    return ListTile(
-      onTap: () {
-        onTap?.call(route);
-      },
-      leading: Column(
-        children: [
-          Text(
-            "${duration.inHours}:${duration.inMinutes}",
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-          ),
-          const Text(
-            "Mins",
-          ),
-        ],
-      ),
-      trailing: Text("${(route.distance / 1000).toStringAsFixed(1)} KM"),
-      title: Text(route.legs.map((e) => e.summary).join(""), maxLines: 1),
-    );
-  }
-}
-
-class RouteSelectionWidget extends StatelessWidget {
-  final List<RoutePoint> routesPoint;
-  final VoidCallback? onAddStartPointTap;
-  final VoidCallback? onAddEndPointTap;
-  final Function(RoutePoint)? onAddStopPointTap;
-  final VoidCallback? onAddNewStopPointTap;
-  final Function(RoutePoint)? onDeleteStopPointTap;
-
-  const RouteSelectionWidget(
-      {Key? key,
-      required this.routesPoint,
-      this.onAddEndPointTap,
-      this.onAddNewStopPointTap,
-      this.onDeleteStopPointTap,
-      this.onAddStartPointTap,
-      this.onAddStopPointTap})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(8),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 200),
-          child: ListView.builder(
-              padding: const EdgeInsets.all(8),
-              shrinkWrap: true,
-              itemBuilder: (context, index) {
-                var point = routesPoint[index];
-                return GestureDetector(
-                  onTap: () async {
-                    switch (point.routeType) {
-                      case RouteType.start:
-                        onAddStartPointTap?.call();
-                        break;
-                      case RouteType.end:
-                        onAddEndPointTap?.call();
-
-                        break;
-                      case RouteType.stop:
-                        onAddStopPointTap?.call(point);
-                        break;
-                    }
-                  },
-                  child: Row(
-                    children: [
-                      RouteTypeWidget(routeType: point.routeType),
-                      Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            point.locationPoint?.name ?? "",
-                            maxLines: 1,
-                          ),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(4)),
-                        ),
-                      ),
-                      Visibility(
-                        child: IconButton(
-                            onPressed: () {
-                              onDeleteStopPointTap?.call(point);
-                            },
-                            icon: const Icon(Icons.delete_forever)),
-                        visible: point.routeType == RouteType.stop,
-                        maintainSize: true,
-                        maintainAnimation: true,
-                        maintainState: true,
-                        maintainInteractivity: false,
-                      )
-                    ],
-                  ),
-                );
-              },
-              itemCount: routesPoint.length),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(children: [
-            TextButton.icon(
-                onPressed: onAddNewStopPointTap,
-                label: const Text("Add new stop"),
-                icon: const Icon(Icons.add_circle_rounded)),
-            const Spacer(),
-            Text(
-                "${routesPoint.where((value) => value.routeType != RouteType.start).length} Stops")
-          ]),
-        )
-      ]),
-    );
-  }
-}

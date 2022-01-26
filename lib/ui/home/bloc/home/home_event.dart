@@ -1,6 +1,5 @@
 part of 'home_bloc.dart';
 
-
 @immutable
 abstract class HomeEvent {}
 
@@ -31,6 +30,9 @@ class OnEndPointSelect extends HomeEvent {
 
   OnEndPointSelect(this.result);
 }
+
+class SubmitRouteSearch extends HomeEvent {}
+class ClearSelectedPoints extends HomeEvent {}
 
 class OnStopPointAdd extends HomeEvent {}
 

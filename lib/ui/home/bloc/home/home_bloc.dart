@@ -34,6 +34,14 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       emit(ClearAllOnMap());
       emit(NavigationSearch());
     });
+    on<SubmitRouteSearch>((event, emit) {
+      if (_shouldDoSearchRoute()) {
+        _searchForRoutes();
+      }
+    });
+    on<ClearSelectedPoints>((event, emit) {
+      add(NavigationToRoute());
+    });
     on<NavigationToRoute>((event, emit) {
       _currentScreen = CurrentScreen.route;
       _resetRoutePoints();
@@ -52,9 +60,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       emit(ShowSearchResultAndLocationOnMap(event.result));
     });
     on<OnBackPress>((event, emit) {
-      if(_currentScreen==CurrentScreen.route){
-       add(NavigationToRoute());
-      }else {
+      if (_currentScreen == CurrentScreen.route) {
+        add(NavigationToRoute());
+      } else {
         add(NavigationToSearch());
       }
     });
@@ -62,19 +70,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       _routesPoint.first.locationPoint = event.result;
       emit(ShowRouteStartPointLocation(event.result));
       emit(NavigationRoute(_routesPoint));
-
-      if (_shouldDoSearchRoute()) {
-        _searchForRoutes();
-      }
     });
     on<OnEndPointSelect>((event, emit) {
       _routesPoint.last.locationPoint = event.result;
       emit(ShowRouteEndPointLocation(_routesPoint));
       emit(NavigationRoute(_routesPoint));
-
-      if (_shouldDoSearchRoute()) {
-        _searchForRoutes();
-      }
     });
     on<OnStopPointSelect>((event, emit) {
       var routePointWithId =
@@ -82,17 +82,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       routePointWithId.locationPoint = event.result;
       emit(ShowRouteEndPointLocation(_routesPoint));
       emit(NavigationRoute(_routesPoint));
-      if (_shouldDoSearchRoute()) {
-        _searchForRoutes();
-      }
     });
     on<OnStopPointRemove>((event, emit) {
       _routesPoint.removeWhere((element) => element.id == event.point.id);
       emit(ShowRouteEndPointLocation(_routesPoint));
       emit(NavigationRoute(_routesPoint));
-      if (_shouldDoSearchRoute()) {
-        _searchForRoutes();
-      }
     });
 
     on<OnStopPointAdd>((event, emit) {
