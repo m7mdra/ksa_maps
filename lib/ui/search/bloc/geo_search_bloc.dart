@@ -58,7 +58,6 @@ class GeoSearchBloc extends Bloc<GeoSearchEvent, GeoSearchState> {
           emit(GeoSearchResult(list, false, _pageNumber));
         }
       } catch (error) {
-        print(error);
         if (error is CancelException) {
           emit(GeoSearchInitial());
         } else {

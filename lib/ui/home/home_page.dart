@@ -1,13 +1,13 @@
 import 'dart:convert';
-import 'dart:math';
+import 'dart:developer';
 import 'dart:typed_data';
-
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ksa_maps/data/data.dart';
 import 'package:ksa_maps/data/ksamaps_resources.dart';
-import 'package:ksa_maps/data/model/route_response.dart';
+import 'package:ksa_maps/data/model/map_features.dart';
 import 'package:ksa_maps/di/dependency_provider.dart';
 import 'package:ksa_maps/polyline.dart';
 import 'package:ksa_maps/ui/home/bloc/home/home_bloc.dart';
@@ -19,7 +19,6 @@ import 'package:ksa_maps/ui/widget/location_button.dart';
 import 'package:ksa_maps/ui/widget/map_style_features.dart';
 import 'package:ksa_maps/ui/widget/map_zoom_controls.dart';
 import 'package:ksa_maps/ui/widget/route_planning_widget.dart';
-import 'package:ksa_maps/ui/widget/route_type.dart';
 import 'package:ksa_maps/ui/widget/route_view_widget.dart';
 import 'package:ksa_maps/ui/widget/search_widget.dart';
 import 'package:location/location.dart';
@@ -27,7 +26,7 @@ import 'package:maplibre_gl/mapbox_gl.dart';
 
 import 'bloc/home/route.dart';
 
-const kPoiLayers = ['pois1', 'pois2', 'pois3', 'pois4', 'pois5'];
+var poiLayers = ['pois1', 'pois2', 'pois3', 'pois4', 'pois5'];
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -136,7 +135,7 @@ class _HomePageState extends State<HomePage> {
       await _mapController?.addSymbol(SymbolOptions(
           geometry: coordinates, iconImage: "start_point", iconSize: 3.5));
       await _mapController
-          ?.animateCamera(CameraUpdate.newLatLngZoom(coordinates, 12));
+          ?.animateCamera(CameraUpdate.newLatLngZoom(coordinates, 13));
     }
 
     if (state is ShowRouteEndPointLocation) {
@@ -224,7 +223,7 @@ class _HomePageState extends State<HomePage> {
             child: Stack(
               children: [
                 MaplibreMap(
-                    attributionButtonMargins: const Point(-1000, -1000),
+                    attributionButtonMargins: const math.Point(-1000, -1000),
                     // logoViewMargins: const Point(-1000, -1000),
                     myLocationTrackingMode: MyLocationTrackingMode.None,
                     myLocationEnabled: false,
@@ -234,6 +233,7 @@ class _HomePageState extends State<HomePage> {
                       AnnotationType.circle,
                       AnnotationType.fill,
                     ],
+                    // onMapClick: _onMapClick,
                     onStyleLoadedCallback: _onStyleLoaded,
                     minMaxZoomPreference: const MinMaxZoomPreference(4.5, 19),
                     myLocationRenderMode: MyLocationRenderMode.NORMAL,
@@ -330,6 +330,28 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  var point;
+
+  void _onMapClick(point, coordinate) async {
+    setState(() {
+      this.point = point;
+    });
+    var rect = rectFromPoint(point);
+
+    print(rect);
+    var features =
+        await _mapController?.queryRenderedFeaturesInRect(rect, poiLayers, "");
+    if (features != null) {
+      features
+          .map((e) => MapFeature.fromJson(e))
+          .where((element) => element.geometry.type.toLowerCase() == "point")
+          .toList()
+          .forEach((element) {
+        log(element.toString());
+      });
+    }
   }
 
   void _onClearPointsClick() {
@@ -509,16 +531,16 @@ class _HomePageState extends State<HomePage> {
                 satelliteAdded: _satelliteAdded,
                 isTrafficEnabled: _trafficAdded,
                 onNormalSelected: () async {
-                  await _removeSatellite();
+                  await _removeSatellite(setState);
                 },
                 onSatelliteSelected: () async {
-                  await _addSatellite();
+                  await _addSatellite(setState);
                 },
                 onTrafficToggle: () async {
                   if (_trafficAdded) {
-                    _removeTraffic();
+                    _removeTraffic(setState);
                   } else {
-                    _addTraffic();
+                    _addTraffic(setState);
                   }
                 },
               );
@@ -527,14 +549,14 @@ class _HomePageState extends State<HomePage> {
         });
   }
 
-  Future<void> _removeSatellite() async {
+  Future<void> _removeSatellite(StateSetter setState) async {
     await _mapController?.removeLayer("satellite");
     setState(() {
       _satelliteAdded = false;
     });
   }
 
-  Future<void> _addSatellite() async {
+  Future<void> _addSatellite(StateSetter setState) async {
     await _mapController?.addLayer(
         "satellite", "satellite", const RasterLayerProperties(),
         belowLayerId: "land");
@@ -543,7 +565,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _addTraffic() {
+  void _addTraffic(StateSetter setState) {
     _mapController
         ?.addLayer(
             "traffic",
@@ -582,7 +604,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _removeTraffic() {
+  void _removeTraffic(StateSetter setState) {
     _mapController?.removeLayer("traffic").then((_) {
       setState(() {
         _trafficAdded = false;
@@ -601,12 +623,12 @@ class _HomePageState extends State<HomePage> {
       var result = await Navigator.push<QueryResult>(context,
           MaterialPageRoute(builder: (context) {
         return SearchPage(
-          center: [center.latitude, center.longitude],
+          center: [center.longitude, center.latitude],
           bounds: [
-            bounds.northeast.latitude,
             bounds.northeast.longitude,
-            bounds.southwest.latitude,
-            bounds.southwest.longitude
+            bounds.northeast.latitude,
+            bounds.southwest.longitude,
+            bounds.southwest.latitude
           ],
         );
       }));
@@ -635,5 +657,35 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+class RectPainter extends CustomPainter {
+  final math.Point point;
 
+  RectPainter(this.point);
 
+  @override
+  void paint(Canvas canvas, Size size) {
+    Rect rect = rectFromPoint(point);
+
+    var paint = Paint();
+    paint.color = Colors.red;
+    paint.strokeWidth = 1;
+    paint.style = PaintingStyle.stroke;
+    canvas.drawRect(rect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant RectPainter oldDelegate) {
+    return oldDelegate.point != point;
+  }
+}
+
+Rect rectFromPoint(math.Point point) {
+  var modifier = 20;
+  var offset =
+      Offset(point.x.toDouble() - modifier, point.y.toDouble() - modifier);
+  var offset1 =
+      Offset(point.x.toDouble() + modifier, point.y.toDouble() + modifier);
+  var rect = Rect.fromPoints(offset, offset1);
+  print(rect);
+  return rect;
+}

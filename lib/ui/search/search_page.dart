@@ -4,6 +4,7 @@ import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:ksa_maps/data/data.dart';
 import 'package:ksa_maps/di/dependency_provider.dart';
 import 'package:ksa_maps/ui/search/bloc/geo_search_bloc.dart';
+import 'package:maplibre_gl/mapbox_gl.dart';
 
 class SearchPage extends StatefulWidget {
   final List<double> center;
@@ -38,6 +39,7 @@ class _SearchPageState extends State<SearchPage> {
     });
     _bloc.stream.listen(_onNewState);
   }
+
 
   void _onNewState(state) {
     if (state is GeoSearchError) {
@@ -148,7 +150,7 @@ class _SearchPageState extends State<SearchPage> {
                 },
                 title: Text(item.name ?? ""),
                 subtitle: Text(item.fullAddress ?? ""),
-                leading: const Icon(Icons.location_on_outlined),
+                leading: _buildLeadingIconForId(item.type),
               );
             }
           },
@@ -196,5 +198,17 @@ class _SearchPageState extends State<SearchPage> {
             },
           )
         ]));
+  }
+
+
+  Widget _buildLeadingIconForId(int type) {
+    switch (type) {
+      case 1:
+        return const Icon(Icons.location_city_outlined);
+      case 2:
+        return const Icon(Icons.directions_outlined);
+      default:
+        return const Icon(Icons.place_outlined);
+    }
   }
 }

@@ -19,7 +19,7 @@ class QueryResult {
     this.city,
     this.postalCode,
     this.pages,
-    this.type,
+   required this.type,
   });
 
   final double lat;
@@ -32,7 +32,7 @@ class QueryResult {
   final String? city;
   final String? postalCode;
   final String? pages;
-  final int? type;
+  final int type;
 
   factory QueryResult.fromJson(Map<String, dynamic> json) => QueryResult(
         lat: json["lat"] ?? 0.0,
