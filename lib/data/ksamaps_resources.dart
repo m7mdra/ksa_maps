@@ -11,4 +11,6 @@ class KsaMapsResources {
   static const kVectorTrafficTileAttribution = "Traffic: Data Source © TomTom";
 
   static const kStyleTilesUrl = "https://ksamaps.com/api/style?key=$kAccessKey";
+  static const kMobileStyleTilesUrl =
+      "https://ksamaps.com/api/style?key=$kAccessKey&style=mobile";
 }

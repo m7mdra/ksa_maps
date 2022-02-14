@@ -13,6 +13,7 @@ import 'package:ksa_maps/polyline.dart';
 import 'package:ksa_maps/ui/home/bloc/home/home_bloc.dart';
 import 'package:ksa_maps/ui/home/bloc/route/route_bloc.dart';
 import 'package:ksa_maps/ui/search/search_page.dart';
+import 'package:ksa_maps/ui/settings/settings_page.dart';
 import 'package:ksa_maps/ui/widget/360_button.dart';
 import 'package:ksa_maps/ui/widget/layers_button.dart';
 import 'package:ksa_maps/ui/widget/location_button.dart';
@@ -233,15 +234,15 @@ class _HomePageState extends State<HomePage> {
                       AnnotationType.circle,
                       AnnotationType.fill,
                     ],
-                    // onMapClick: _onMapClick,
+                    onMapClick: _onMapClick,
                     onStyleLoadedCallback: _onStyleLoaded,
                     minMaxZoomPreference: const MinMaxZoomPreference(4.5, 19),
                     myLocationRenderMode: MyLocationRenderMode.NORMAL,
                     zoomGesturesEnabled: true,
-                    styleString: KsaMapsResources.kStyleTilesUrl,
+                    styleString: KsaMapsResources.kMobileStyleTilesUrl,
                     compassEnabled: true,
                     initialCameraPosition: const CameraPosition(
-                        target: LatLng(24.774265, 46.738586), zoom: 5),
+                        target: LatLng(24.774265, 46.738586), zoom: 12),
                     onMapCreated: _onMapCreated),
                 Align(
                     child: LayersButton(onTap: _showFeatureAndLayerBottomSheet),
@@ -280,7 +281,7 @@ class _HomePageState extends State<HomePage> {
                       return Container(color: Colors.red);
                     }
                     if (state is NavigationSettings) {
-                      return Container(color: Colors.blue);
+                      return const SettingsPage();
                     }
                     if (state is ShowSearchResultAndLocationOnMap) {
                       return ClickableSearchWidget(
@@ -342,7 +343,7 @@ class _HomePageState extends State<HomePage> {
 
     print(rect);
     var features =
-        await _mapController?.queryRenderedFeaturesInRect(rect, poiLayers, "");
+        await _mapController?.queryRenderedFeatures(point, poiLayers, []);
     if (features != null) {
       features
           .map((e) => MapFeature.fromJson(e))
